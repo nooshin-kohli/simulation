@@ -1,0 +1,6 @@
+base: trunk
+front:
+  - hip
+  - thigh
+  - calf
+

@@ -1,0 +1,16 @@
+<launch>
+    <rosparam file="$(find icheetah_config)/config/ros_control/leg_control.yaml" command="load"/>
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" ns="/leg"
+          args="--namespace=/leg
+            joint_states_controller
+            hip_joint_position_controller
+            thigh_joint_position_controller
+            calf_joint_position_controller
+            ">
+        </node>
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
+        <remap from="/joint_state" to="/leg/joint_state"/>
+    </node>
+
+</launch>

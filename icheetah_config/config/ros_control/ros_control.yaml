@@ -1,0 +1,17 @@
+leg:
+  joint_states_controller:
+      type: joint_state_controller/JointStateController
+      publish_rate: 50
+
+  joint_group_position_controller:
+      type: effort_controllers/JointTrajectoryController
+      joints:
+          - hip_joint
+          - thigh_joint
+          - calf_joint
+   
+      gains:
+        hip_joint : {p: 180, d: 6, i: 20}
+        thigh_joint : {p: 180, d: 6, i: 20}
+        calf_joint : {p: 180, d: 6, i: 20}
+        

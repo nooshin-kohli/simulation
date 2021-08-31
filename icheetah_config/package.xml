@@ -1,0 +1,12 @@
+<package format="2">
+    <name>icheetah_config</name>
+    <version>0.1.0</version>
+    <description>icheetah Champ Config Package</description>
+    <maintainer email="nooshin_kohli@yahoo.com">Nooshin Kohli</maintainer>
+    <author>Nooshin Kohli</author>
+    <license>BSD</license>
+    <buildtool_depend>catkin</buildtool_depend>
+    <exec_depend>roslaunch</exec_depend>
+    <exec_depend>rviz</exec_depend>
+    <exec_depend>champ_base</exec_depend>
+</package>
