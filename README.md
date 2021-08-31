@@ -24,4 +24,5 @@ See Topics in new terminal write
 `rostopic list`
 ### Command a position to controllers
 `rostopic pub -1 /leg/jumper_position_controller/command std_msgs/Float64 <value in meters>`
+or for commanding one of revolute joints:
 `rostopic pub -1 /leg/hip_joint_position_controller/command std_msgs/Float64 <value in radians>`
