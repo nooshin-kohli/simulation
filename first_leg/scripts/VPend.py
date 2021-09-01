@@ -4,7 +4,7 @@ import sys
 sys.path.append("/home/nooshin/projects/rbdl/build/python")
 import rbdl
 
-model = rbdl.loadModel("/home/nooshin/Desktop/legRBDL.urdf")
+model = rbdl.loadModel("legRBDL.urdf")
 end_point = np.zeros(model.q_size)
 end_point[0] = 0.0
 end_point[1] = 0.0
@@ -20,6 +20,8 @@ class VP():
         self.pose = rbdl.CalcBodyToBaseCoordinates(model, q, model.GetBodyId('calf'), end_point)
 
 
+# examination
+
 q = np.zeros(model.q_size)
 q[0] = 1
 q[1] = 2
@@ -32,5 +34,4 @@ qdot[2] = 2
 
 r = VP(q, qdot)
 print(r.vel)
-print(r.pose)
-
+print(r.pose[2])
