@@ -1,13 +1,19 @@
 # Gazebo simulation and ROS
 ## prerequisites
 Considering ROS Melodic is installed on your Ubuntu 18.04, we will guide you to configure your workspace.
-If you don't have ROS Melodic installed, check this page [http://wiki.ros.org/melodic/Installation/Ubuntu](url)
+If you don't have ROS Melodic installed, check this page http://wiki.ros.org/melodic/Installation/Ubuntu
+For using controllers you need to install ros_control and ros_controllers:
+`sudo apt update`
+`sudo apt-get install ros-melodic-ros-control ros-melodic-ros-controllers`
+For using joint-state-publisher-gui:
+`sudo apt update`
+`sudo apt install ros-melodic-joint-state-publisher-gui`
 ### create your workspace
 At first, you need to configure a workspace using this commands:
 `mkdir <your_ws>`
 `cd <your_ws>`
 `catkin_make`
-For more information about catkin workspace check this page [http://wiki.ros.org/catkin/Tutorials/create_a_workspace](url)
+For more information about catkin workspace check this page http://wiki.ros.org/catkin/Tutorials/create_a_workspace
 Now It's time to clone the repository.
 `cd <your_ws>/src`
 `git clone https://github.com/nooshin-kohli/simulation.git`
@@ -26,3 +32,4 @@ See Topics in new terminal write
 `rostopic pub -1 /leg/jumper_position_controller/command std_msgs/Float64 <value in meters>`
 or for commanding one of revolute joints:
 `rostopic pub -1 /leg/hip_joint_position_controller/command std_msgs/Float64 <value in radians>`
+*note: for commanding negative values (for calf_joint) `rostopic pub -1 /leg/calf_joint_position_controller/command std_msgs/Float64 -- <value in radians>` 
