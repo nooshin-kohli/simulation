@@ -2,6 +2,12 @@
 ## prerequisites
 Considering ROS Melodic is installed on your Ubuntu 18.04, we will guide you to configure your workspace.
 If you don't have ROS Melodic installed, check this page http://wiki.ros.org/melodic/Installation/Ubuntu
+For using controllers you need to install ros_control and ros_controllers:
+`sudo apt update`
+`sudo apt-get install ros-melodic-ros-control ros-melodic-ros-controllers`
+For using joint-state-publisher-gui:
+`sudo apt update`
+`sudo apt install ros-melodic-joint-state-publisher-gui`
 ### create your workspace
 At first, you need to configure a workspace using this commands:
 `mkdir <your_ws>`
