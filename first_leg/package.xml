@@ -59,9 +59,10 @@
   <exec_depend>rospy</exec_depend>
   <exec_depend>urdf</exec_depend>
 
-
   <!-- The export tag contains other, unspecified, tags -->
   <export>
+    <exec_depend>gazebo_plugins</exec_depend>
+    <exec_depend>hector_gazebo_plugins</exec_depend>
     <!-- Other tools can request additional information be placed here -->
 
   </export>

@@ -2,7 +2,7 @@
     <!--arg name="gazebo_world"       default="$(find champ_gazebo)/worlds/outdoor.world" /-->
     <arg name="world_init_x"       default="0.0" />
     <arg name="world_init_y"       default="0.0" />
-    <arg name="world_init_z"       default="0.0" />
+    <arg name="world_init_z"       default="0.45" />
     <arg name="world_init_heading" default="0.0" />
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name" value="$(find first_leg)/worlds/default.world"/>
@@ -14,7 +14,7 @@
 
         <!--arg name="verbose" default="true"/-->
     </include>
-    <param name="robot_description" textfile="$(find first_leg)/urdf/leg.urdf"/>
+    <param name="robot_description" textfile="$(find first_leg)/urdf/leg_no_slider.urdf"/>
 
     <!--rosparam file="$(find icheetah_config)/config/ros_control/ros_control.yaml" command="load"/-->
 
@@ -26,14 +26,13 @@
         <remap from="/joint_state" to="/leg/joint_state"/>
     </node-->
 
-    <rosparam file="$(find icheetah_config)/config/ros_control/leg_control.yaml" command="load"/>
+    <rosparam file="$(find icheetah_config)/config/ros_control/ros_control.yaml" command="load"/>
     <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" ns="/leg"
           args="--namespace=/leg
             joint_states_controller
             hip_joint_position_controller
             thigh_joint_position_controller
             calf_joint_position_controller
-            jumper_position_controller
             ">
         </node>
 
@@ -43,4 +42,5 @@
 
 
 </launch>
+
 
