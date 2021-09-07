@@ -18,7 +18,8 @@ def callback(data):
         print("robot touched ground!!")
     else:
         print(str(pose))
-
+        print(rospy.get_time())
+        rospy.timer()
 
 
 def main():

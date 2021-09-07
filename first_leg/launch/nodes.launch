@@ -1,0 +1,8 @@
+<launch>
+
+    <node name="hip_command" pkg="first_leg" type="hip.py" output="screen"></node>
+    <node name="thigh_command" pkg="first_leg" type="thigh.py" output="screen"></node>
+    <node name="calf_command" pkg="first_leg" type="calf.py" output="screen"></node>
+
+
+</launch>
