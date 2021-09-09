@@ -29,7 +29,7 @@ class ROBOT():
         pose = rbdl.CalcBodyToBaseCoordinates(self.model, q, self.model.GetBodyId('calf'), self.end_point)
         return pose
 
-# example: 
+
 # q = np.zeros(3)
 # q[0] = 0.1
 # q[1] = 0.2

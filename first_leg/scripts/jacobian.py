@@ -8,9 +8,9 @@ from std_msgs.msg import Float64, String, Int32, Int32MultiArray, MultiArrayLayo
 from VPend import VP
 
 
-pub_1 = rospy.Publisher('/q_0', Float64, queue_size=10)
-pub_2 = rospy.Publisher('/q_1',Float64,queue_size=10)
-pub_3 = rospy.Publisher('/q_2',Float64,queue_size=10)
+pub_1 = rospy.Publisher('/leg/hip_joint_position_controller/command', Float64, queue_size=10)
+pub_2 = rospy.Publisher('/leg/thigh_joint_position_controller/command', Float64, queue_size=10)
+pub_3 = rospy.Publisher('/leg/calf_joint_position_controller/command',Float64,queue_size=10)
 # q = []
 # qdot = []
 # jc = np.zeros((3, 3))
@@ -37,6 +37,7 @@ def main():
     rospy.init_node('jacobian', anonymous=True)
     rospy.Subscriber("/leg/joint_states", JointState, callback)
     rospy.spin()
+
 
 
 if __name__ == '__main__':
