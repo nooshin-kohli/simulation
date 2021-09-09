@@ -1,10 +1,16 @@
 import numpy as np
 import sys
+from os.path import expanduser
 
-sys.path.append("/home/nooshin/projects/rbdl/build/python")
+home = expanduser("~")
+dir = home + '/projects/rbdl/build/python'
+sys.path.append(dir)
 import rbdl
 
-model = rbdl.loadModel("/home/nooshin/minicheetah/src/first_leg/scripts/leg_RBDL.urdf")
+urdf_path = home + '/minicheetah/src/first_leg/scripts/leg_RBDL.urdf'  # TODO: replace 'minicheetah' with your own workspace
+
+# model = rbdl.loadModel("/home/nooshin/minicheetah/src/first_leg/scripts/leg_RBDL.urdf")
+model = rbdl.loadModel(urdf_path)
 end_point = np.zeros(model.q_size)
 end_point[0] = 0.0
 end_point[1] = 0.0

@@ -19,11 +19,12 @@ def callback(data):
     q = np.asarray(q)
     qdot = data.velocity
     qdot = np.asarray(qdot)
-    robot = ROBOT(q, qdot)
+    robot = ROBOT(q, qdot, "/home/nooshin/minicheetah/src/first_leg/scripts/leg_RBDL.urdf")  # TODO: give your own urdf_path
     jc = robot.calcJc(q)
-    pub_1.publish(q[0] - 0.1)
-    pub_2.publish(q[1] - 0.1)
-    pub_3.publish(q[2] - 0.1)
+    # print(q[0])
+    pub_1.publish(q[0]+0.1)
+    pub_2.publish(q[1]+0.1)
+    pub_3.publish(q[2]+0.1)
 
     # while ((rospy.get_time() - tpre)< 0.001):pass
     # tpre = rospy.get_time()

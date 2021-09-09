@@ -37,13 +37,6 @@ def main():
     rospy.init_node('jacobian', anonymous=True)
     rospy.Subscriber("/leg/joint_states", JointState, callback)
     rospy.spin()
-    # pub = rospy.Publisher('/jc', Int32MultiArray, queue_size=10)
-    # rospy.spin()
-    # r = rospy.Rate(10)
-    # while not rospy.is_shutdown():
-    #     rospy.loginfo(jc)
-    #     pub.publish(jc)
-    #     r.sleep()
 
 
 if __name__ == '__main__':
