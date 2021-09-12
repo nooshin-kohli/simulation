@@ -11,28 +11,27 @@ pub_1 = rospy.Publisher('/leg/hip_joint_position_controller/command', Float64, q
 pub_2 = rospy.Publisher('/leg/thigh_joint_position_controller/command', Float64, queue_size=10)
 pub_3 = rospy.Publisher('/leg/calf_joint_position_controller/command', Float64, queue_size=10)
 
-# tpre = rospy.get_time()
+rospy.init_node('command', anonymous=True)
+tpre = rospy.get_time()
 
 def callback(data):
-    # global tpre
+    global tpre
     q = data.position
     q = np.asarray(q)
     qdot = data.velocity
     qdot = np.asarray(qdot)
-    robot = ROBOT(q, qdot, "/home/nooshin/minicheetah/src/first_leg/scripts/leg_RBDL.urdf")  # TODO: give your own urdf_path
+    robot = ROBOT(q, qdot)
     jc = robot.calcJc(q)
-    # print(q[0])
-    pub_1.publish(q[0]+0.1)
-    pub_2.publish(q[1]+0.1)
-    pub_3.publish(q[2]+0.1)
+    pub_1.publish(q[2] - 0.1)
+    pub_2.publish(q[1] - 0.1)
+    pub_3.publish(q[0] - 0.1)
 
-    # while ((rospy.get_time() - tpre)< 0.001):pass
-    # tpre = rospy.get_time()
+    while ((rospy.get_time() - tpre)< 0.001):pass
+    tpre = rospy.get_time()
 
 
 
 def main():
-    rospy.init_node('command', anonymous=True)
     rospy.Subscriber("/leg/joint_states", JointState, callback)
     rospy.spin()
 
