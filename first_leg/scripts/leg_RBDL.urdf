@@ -144,14 +144,14 @@
       <material name="white_blue"/>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0.035635 -0.10655"/>
+      <origin rpy="0 0 0" xyz="0 0.06 -0.10655"/>
       <geometry>
         <box size="0.06 0.07125 0.2131"/>
       </geometry>
       <material name="white_blue"/>
     </collision>
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0.035635 -0.10655"/>
+      <origin rpy="0 0 0" xyz="0 0.06 -0.10655"/>
       <mass value="1.062"/>
       <inertia ixx="0.00261820866667" ixy="0.0" ixz="0.0" iyy="0.00265482216667" iyz="0.0" izz="0.000158764166667"/>
     </inertial>
