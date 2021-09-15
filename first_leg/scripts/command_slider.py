@@ -8,12 +8,13 @@ from std_msgs.msg import Float64, String, Int32, Int32MultiArray, MultiArrayLayo
 from robot_class import ROBOT
 import time
 
-pub_1 = rospy.Publisher('/leg/hip_joint_position_controller/command', Float64, queue_size=10)
-pub_2 = rospy.Publisher('/leg/thigh_joint_position_controller/command', Float64, queue_size=10)
-pub_3 = rospy.Publisher('/leg/calf_joint_position_controller/command', Float64, queue_size=10)
-
+pub_hip = rospy.Publisher('/leg/hip_joint_position_controller/command', Float64, queue_size=10)
+pub_thigh = rospy.Publisher('/leg/thigh_joint_position_controller/command', Float64, queue_size=10)
+pub_calf = rospy.Publisher('/leg/calf_joint_position_controller/command', Float64, queue_size=10)
+pub_slider = rospy.Publisher('/leg/jumper_position_controller/command', Float64, queue_size=10)
 rospy.init_node('command', anonymous=True)
 tpre = rospy.get_time()
+
 
 def callback(data):
     global tpre
@@ -21,16 +22,18 @@ def callback(data):
     q = np.asarray(q)
     qdot = data.velocity
     qdot = np.asarray(qdot)
-    robot = ROBOT(q, qdot, "/home/nooshin/minicheetah/src/first_leg/scripts/leg_RBDL.urdf")  # TODO: give your own urdf_path
+    robot = ROBOT(q, qdot,
+                  "/home/nooshin/minicheetah/src/first_leg/scripts/legRBDL.urdf")  # TODO: give your own urdf_path
     jc = robot.calcJc(q)
     # print(q[0])
-    pub_1.publish(q[0]+0.1)
-    pub_2.publish(q[1]+0.1)
-    pub_3.publish(q[2]+0.1)
+    pub_calf.publish(-0.1)
+    pub_thigh.publish(0.1)
+    pub_hip.publish(0.2)
+    height = 0.4
+    pub_slider.publish(height)
 
-    while ((rospy.get_time() - tpre)< 0.001):pass
+    while ((rospy.get_time() - tpre) < 0.001): pass
     tpre = rospy.get_time()
-
 
 
 def main():

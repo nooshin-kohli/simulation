@@ -31,10 +31,11 @@ class ROBOT():
 
 
 # q = np.zeros(3)
-# q[0] = 0.1
-# q[1] = 0.2
-# q[2] = 0.2
+# q[0] = 0
+# q[1] = 0
+# q[2] = 0
 # qdot = np.zeros(3)
 # r = ROBOT(q, qdot, "/home/nooshin/minicheetah/src/first_leg/scripts/leg_RBDL.urdf")
-#
-# print(r.calcJc(q))
+# print(r.pose_end(q))
+
+
