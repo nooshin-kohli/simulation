@@ -9,7 +9,7 @@ import rbdl
 
 
 class ROBOT():
-    def __init__(self, q, qdot, urdf_path):     # TODO: path to leg_RBDL.urdf for robot without slider
+    def __init__(self, q, qdot, urdf_path):     # TODO: path to leg_RBDL.urdf for robot without slider and legRBDL.urdf for slider
         self.model = rbdl.loadModel(urdf_path)
         self.q = q
         self.qdot = qdot
@@ -26,16 +26,13 @@ class ROBOT():
         return vel
 
     def pose_end(self, q):
-        pose = rbdl.CalcBodyToBaseCoordinates(self.model, q, self.model.GetBodyId('calf'), self.end_point)
-        return pose
+        pose_base = rbdl.CalcBodyToBaseCoordinates(self.model, q, self.model.GetBodyId('calf'), self.end_point)
+        return pose_base
 
 
-# q = np.zeros(3)
-# q[0] = 0
-# q[1] = 0
-# q[2] = 0
-# qdot = np.zeros(3)
-# r = ROBOT(q, qdot, "/home/nooshin/minicheetah/src/first_leg/scripts/leg_RBDL.urdf")
-# print(r.pose_end(q))
+q = np.zeros(4)
+qdot = np.zeros(4)
+r = ROBOT(q, qdot, "/home/nooshin/minicheetah/src/first_leg/scripts/legRBDL.urdf")
+print(r.pose_end(q))
 
 

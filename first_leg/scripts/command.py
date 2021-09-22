@@ -8,9 +8,9 @@ from std_msgs.msg import Float64, String, Int32, Int32MultiArray, MultiArrayLayo
 from robot_class import ROBOT
 import time
 
-pub_1 = rospy.Publisher('/leg/hip_joint_position_controller/command', Float64, queue_size=10)
+pub_1 = rospy.Publisher('/leg/calf_joint_position_controller/command', Float64, queue_size=10)
 pub_2 = rospy.Publisher('/leg/thigh_joint_position_controller/command', Float64, queue_size=10)
-pub_3 = rospy.Publisher('/leg/calf_joint_position_controller/command', Float64, queue_size=10)
+pub_3 = rospy.Publisher('/leg/hip_joint_position_controller/command', Float64, queue_size=10)
 
 rospy.init_node('command', anonymous=True)
 tpre = rospy.get_time()
@@ -23,7 +23,7 @@ def callback(data):
     qdot = np.asarray(qdot)
     robot = ROBOT(q, qdot, "/home/nooshin/minicheetah/src/first_leg/scripts/leg_RBDL.urdf")  # TODO: give your own urdf_path
     jc = robot.calcJc(q)
-    # print(q[0])
+    # print(q[0])                   q[0]= calf/joint_state q[1]= thigh/joint_state q[2]= hip/joint_state
     pub_1.publish(q[0]+0.1)
     pub_2.publish(q[1]+0.1)
     pub_3.publish(q[2]+0.1)
