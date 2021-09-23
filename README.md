@@ -67,10 +67,26 @@ or for commanding one of revolute joints:
 ```
 rostopic pub -1 /leg/hip_joint_position_controller/command std_msgs/Float64 <value in radians>
 ```
-*note: for commanding negative values (for calf_joint) ```rostopic pub -1 /leg/calf_joint_position_controller/command std_msgs/Float64 -- <value in radians>``` 
+*note: for commanding negative values (for calf_joint) 
+```
+rostopic pub -1 /leg/calf_joint_position_controller/command std_msgs/Float64 -- <value in radians>
+``` 
 
 ## Run command node
-After launching robot in gazebo, open another terminal then go to your workspace ```cd <your_ws>``` and source setup.bash ```source devel/setup.bash``` 
-To run the node for no slider mode enter ```rosrun first_leg command.py``` 
+After launching robot in gazebo, open another terminal then go to your workspace 
+```
+cd <your_ws>
+``` 
+and source setup.bash 
+```
+source devel/setup.bash
+``` 
+To run the node for no slider mode enter 
+```
+rosrun first_leg command.py
+``` 
 you will see robot moving in gazebo.
-*note: For permission denied error, open terminal in scripts directory and enter ```chmod +x command.py```
+*note: For permission denied error, open terminal in scripts directory and enter 
+```
+chmod +x command.py
+```
