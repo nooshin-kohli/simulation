@@ -20,11 +20,21 @@ def callback(data):
     global tpre
     q = data.position
     q = np.asarray(q)
+    q_rbdl = np.zeros(4)
+    q_rbdl[0] = q[2]
+    q_rbdl[1] = q[1]
+    q_rbdl[2] = q[3]
+    q_rbdl[3] = q[0]
     qdot = data.velocity
     qdot = np.asarray(qdot)
-    robot = ROBOT(q, qdot,
+    qdot_rbdl = np.zeros(4)
+    qdot_rbdl[0] = qdot[2]
+    qdot_rbdl[1] = qdot[1]
+    qdot_rbdl[2] = qdot[3]
+    qdot_rbdl[3] = qdot[0]
+    robot = ROBOT(q_rbdl, qdot_rbdl,
                   "/home/nooshin/minicheetah/src/first_leg/scripts/legRBDL.urdf")  # TODO: give your own urdf_path
-    jc = robot.calcJc(q)
+    jc = robot.calcJc(q_rbdl)
     # print(q[0])
     pub_calf.publish(-0.1)
     pub_thigh.publish(0.1)
@@ -47,3 +57,4 @@ if __name__ == '__main__':
         main()
     except rospy.ROSInternalException:
         pass
+
