@@ -29,10 +29,21 @@ class ROBOT():
         pose_base = rbdl.CalcBodyToBaseCoordinates(self.model, q, self.model.GetBodyId('calf'), self.end_point)
         return pose_base
 
+    def CalcTau(self, q, qdot, qddot):
+        Tau = np.zeros(self.model.q_size)
+        rbdl.InverseDynamics(self.model, q, qdot, qddot, Tau)
+        return Tau
 
-q = np.zeros(4)
-qdot = np.zeros(4)
-r = ROBOT(q, qdot, "/home/nooshin/minicheetah/src/first_leg/scripts/legRBDL.urdf")
-print(r.pose_end(q))
+    def endpose_BodyCoordinate(self, body_name, q):   # this function returns end point in any body coordinate you want
+        pose_base = rbdl.CalcBodyToBaseCoordinates(self.model,q, self.model.GetBodyId('calf'), self.end_point)
+        pose = rbdl.CalcBaseToBodyCoordinate(self.model, q, self.model.GetBodyId(body_name), pose_base)
+        return pose
+
+
+
+# q = np.zeros(4)
+# qdot = np.zeros(4)
+# r = ROBOT(q, qdot, "/home/nooshin/minicheetah/src/first_leg/scripts/legRBDL.urdf")
+# print(r.pose_end(q))
 
 
