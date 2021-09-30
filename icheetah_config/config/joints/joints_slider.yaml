@@ -1,0 +1,7 @@
+leg:
+  - jumper
+  - hip_joint
+  - thigh_joint
+  - calf_joint
+
+

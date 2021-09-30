@@ -146,7 +146,7 @@
         <parent link="trunk"/>
         <axis xyz="0 0 1"/>
         <child link="jump"/>
-        <limit effort="20" lower="-0.2" upper="0.5" velocity="0.5"/>
+        <limit effort="20" lower="-0.7" upper="0.5" velocity="0.5"/>
         <origin rpy="0 0 0" xyz="0 0 0.9"/>
         <dynamics damping="0.1" friction="1"/>
     </joint>
