@@ -39,6 +39,12 @@ class ROBOT():
         pose = rbdl.CalcBaseToBodyCoordinate(self.model, q, self.model.GetBodyId(body_name), pose_base)
         return pose
 
+    def a_end(self,q, qdot, qddot):
+        a_end = rbdl.CalcPointAcceleration(self.model, q, qdot, qddot, self.model.GetBodyId('calf'), self.end_point)
+        a_end_world = rbdl.CalcBodyToBaseCoordinates(self.model, q, self.model.GetBodyId('calf'), a_end)
+        return a_end_world
+
+
 
 
 # q = np.zeros(4)
