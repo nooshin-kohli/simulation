@@ -48,15 +48,4 @@ class ROBOT():
 
 
 
-q = np.zeros(3)
-q[0] = 0
-q[1] = -0.7
-q[2] = 0
-qdot = np.zeros(3)
-r = ROBOT(q, qdot, "/home/nooshin/catkin_learn/src/first_leg/scripts/leg_RBDL.urdf")
 
-print(r.pose_end(q))
-
-# q[0] = -0.0791134
-# q[1] = 0.489967193
-# q[2] = 0.005389
