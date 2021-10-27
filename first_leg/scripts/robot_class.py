@@ -13,7 +13,7 @@ class ROBOT():
         self.model = rbdl.loadModel(urdf_path)
         self.q = q
         self.qdot = qdot
-        self.calf_length = -0.21148
+        self.calf_length = -0.240
         self.end_point = np.asarray([0.0, 0.0, self.calf_length])
 
     def calcJc(self, q):
@@ -47,9 +47,16 @@ class ROBOT():
 
 
 
-# q = np.zeros(4)
-# qdot = np.zeros(4)
-# r = ROBOT(q, qdot, "/home/nooshin/minicheetah/src/first_leg/scripts/legRBDL.urdf")
-# print(r.pose_end(q))
 
+q = np.zeros(3)
+q[0] = 0
+q[1] = -0.7
+q[2] = 0
+qdot = np.zeros(3)
+r = ROBOT(q, qdot, "/home/nooshin/catkin_learn/src/first_leg/scripts/leg_RBDL.urdf")
 
+print(r.pose_end(q))
+
+# q[0] = -0.0791134
+# q[1] = 0.489967193
+# q[2] = 0.005389
