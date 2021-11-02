@@ -1,3 +1,7 @@
+'''
+   Autor : Nooshin Kohli
+   Year : 2021
+'''
 import numpy as np
 import sys
 from os.path import expanduser
@@ -47,11 +51,5 @@ class ROBOT():
 
 
 
-<<<<<<< HEAD
 
 
-=======
-# q[0] = -0.0791134
-# q[1] = 0.489967193
-# q[2] = 0.005389
->>>>>>> bf47f90740a55c5de940bbd525ce80fe534a7259

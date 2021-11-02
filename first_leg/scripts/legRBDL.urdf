@@ -1,5 +1,6 @@
 <?xml version="1.0" ?>
 
+<!--<Author name:"Nooshin Kohli" />-->
 
 <robot name="leg" xmlns:xacro="http://www.ros.org/wiki/xacro">
 

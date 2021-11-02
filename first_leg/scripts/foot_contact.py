@@ -1,4 +1,10 @@
 #! /usr/bin/env python3.6
+'''
+Author: Nooshin Kohli
+
+'''
+
+
 import numpy as np
 import rospy
 from sensor_msgs.msg import JointState
