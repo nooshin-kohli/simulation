@@ -18,6 +18,7 @@ pub_3 = rospy.Publisher('/leg/hip_joint_position_controller/command', Float64, q
 
 rospy.init_node('command', anonymous=True)
 #tpre = rospy.get_time()
+#suggest : rospy.Time.now().to_sec()
 run_once=0
 def home_position():
     pub_1.publish(-1.630959899263968)
@@ -25,18 +26,17 @@ def home_position():
     pub_3.publish(0.05022888169204609)
     
 
-
-
-
 tpast=time.time()
 tpre=time.time()
 first_check=0
-
+i=0
 def callback(data):
     global tpast
     global tpre
     global first_check
     global q_pre
+    global P_d
+   
     q = data.position
     q = np.asarray(q)
     q_rbdl = np.zeros(3)
@@ -80,10 +80,12 @@ def callback(data):
         # t_pass=time.time()
         # while ((time.time() - t_pass)< 5):pass
     q_pre=q_rbdl
-        
-        
+           
     #----------------------------------------------------------------DESIRE POSITION APPROACH
-    P_d=[0.2*np.sin(np.pi*time.time()-tpast),0.1,-0.275]
+    inst=time.time()-tpast
+    P_d=[0.2*np.sin(np.pi*inst),0.1,-0.275]
+    dp_d=[0.2*np.cos(np.pi*inst),0,0]
+    #dp_d=[0,0,0]
     #P_d=[-0.26,0.1,-0.28]
     #P_d=[0.25,0.1*np.sin(np.pi*time.time()),-0.28]
     #P_d=[0.25,0.2*np.sin(np.pi*time.time()-tpast),-0.28]
@@ -95,7 +97,7 @@ def callback(data):
 #-------------------------------------------------------------------CALCULATE Q_d
     
    
-    Pdot_d=0+np.dot(error,kp)
+    Pdot_d=dp_d+np.dot(error,kp)
     qdot_d=np.dot(jc_inverse,Pdot_d)
     dt = time.time() - tpre
     tpre += dt
@@ -149,6 +151,7 @@ def main():
     # rospy.init_node('command', anonymous=True)
         rospy.Subscriber("/leg/joint_states", JointState, callback)
         rospy.spin()
+      
 
 
 if __name__ == '__main__':
