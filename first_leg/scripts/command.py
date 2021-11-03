@@ -57,7 +57,7 @@ def callback(data):
     
     #-------------------------------------------------------------------JACOBIAN
     
-    robot = ROBOT(q_rbdl, qdot_rbdl, "/home/nooshin/catkin_learn/src/first_leg/scripts/leg_RBDL.urdf")  # TODO: give your own urdf_path
+    robot = ROBOT(q_rbdl, qdot_rbdl, "/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/leg_RBDL.urdf")  # TODO: give your own urdf_path
     jc = robot.calcJc(q_rbdl)
     jc_inverse=np.linalg.inv(jc)
     #print(np.linalg.cond(jc))

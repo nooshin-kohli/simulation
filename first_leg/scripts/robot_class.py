@@ -17,7 +17,7 @@ class ROBOT():
         self.model = rbdl.loadModel(urdf_path)
         self.q = q
         self.qdot = qdot
-        self.calf_length = -0.240
+        self.calf_length = -0.21148
         self.end_point = np.asarray([0.0, 0.0, self.calf_length])
 
     def calcJc(self, q):
@@ -50,6 +50,9 @@ class ROBOT():
 
 
 
+q = np.zeros(3)
+qdot = np.zeros(3)
+r = ROBOT(q, qdot, "./leg_RBDL.urdf")
 
-
+print(r.pose_end(q))
 
