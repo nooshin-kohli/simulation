@@ -30,6 +30,17 @@ tpast=time.time()
 tpre=time.time()
 first_check=0
 i=0
+data_list=[]
+x_list=[]
+xd_list=[]
+y_list=[]
+yd_list=[]
+zd_list=[]
+z_list=[]
+t_list=[]
+error_x_list=[]
+error_y_list=[]
+error_z_list=[]
 def callback(data):
     global tpast
     global tpre
@@ -57,7 +68,7 @@ def callback(data):
     
     #-------------------------------------------------------------------JACOBIAN
     
-    robot = ROBOT(q_rbdl, qdot_rbdl, "/home/nooshin/catkin_learn/src/first_leg/scripts/leg_RBDL.urdf")  # TODO: give your own urdf_path
+    robot = ROBOT(q_rbdl, qdot_rbdl, "/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/leg_RBDL.urdf")  # TODO: give your own urdf_path
     jc = robot.calcJc(q_rbdl)
     jc_inverse=np.linalg.inv(jc)
     #print(np.linalg.cond(jc))
@@ -73,47 +84,34 @@ def callback(data):
     if first_check==0:
         q_pre=q_rbdl
         first_check=1
-        #home position values:
-        # pub_1.publish(-1.630959899263968)
-        # pub_2.publish(1.0126971578323032)
-        # pub_3.publish(0.05022888169204609)
-        # t_pass=time.time()
-        # while ((time.time() - t_pass)< 5):pass
+        
+
+
+
     q_pre=q_rbdl
            
     #----------------------------------------------------------------DESIRE POSITION APPROACH
     inst=time.time()-tpast
-    P_d=[0.2*np.sin(np.pi*inst),0.1,-0.275]
+    P_d=[0.2*np.sin(0.5*np.pi*inst),0.1,-0.275]
     dp_d=[0.2*np.cos(np.pi*inst),0,0]
-    #dp_d=[0,0,0]
-    #P_d=[-0.26,0.1,-0.28]
-    #P_d=[0.25,0.1*np.sin(np.pi*time.time()),-0.28]
-    #P_d=[0.25,0.2*np.sin(np.pi*time.time()-tpast),-0.28]
-    #P_d=[1,1,1]
-    #P_d=[0.5*np.sin(np.pi*time.time()),0.1,-0.28]
     error=P_d-position
     # print("error:\n")
     print(error)
 #-------------------------------------------------------------------CALCULATE Q_d
     
    
-    Pdot_d=dp_d+np.dot(error,kp)
+    Pdot_d=0+np.dot(error,kp)
     qdot_d=np.dot(jc_inverse,Pdot_d)
     dt = time.time() - tpre
     tpre += dt
     q_d=q_pre+qdot_d*dt
     #q_pre=q_d
-   # print(q_d)
+    #print(q_d)
     diff= q_d-q_pre
    # print(np.linalg.cond(jc))
     pub_1.publish(q_d[2])
     pub_2.publish(q_d[1])
     pub_3.publish(q_d[0])
-    
-    # pub_1.publish(-1.630959899263968)
-    # pub_2.publish(1.0126971578323032)
-    # pub_3.publish(0.05022888169204609)
-    #print(diff)
     # print("-----------------------------------------------------------------------------------") 
     # if np.linalg.cond(jc) < 12:
     #     pub_1.publish(q_d[2])
@@ -129,17 +127,16 @@ def callback(data):
        
     
    #--------------------------------------------------------for plot
-    val_x_list=[P_d[0],P_d[1],P_d[2],position[0],position[1],position[2],time.time()-tpast]
-    # val_x_list.append(P_d[0])
-    # val_x_list.append(P_d[1])
-    # val_x_list.append(P_d[2])
-    # val_x_list.append(position[0])
-    # val_x_list.append(position[1])
-    # val_x_list.append(position[2])
-    # val_x_list.append(time.time()-tpast)
-    # val_x_list = np.asarray(val_x_list)
-    #print(val_x_list)
-
+    x_list.append(position[0])
+    xd_list.append(P_d[0])
+    y_list.append(position[1])
+    yd_list.append(P_d[1])
+    z_list.append(position[2])
+    zd_list.append(P_d[2])
+    t_list.append(inst)
+    error_x_list.append(error[0])
+    error_y_list.append(error[1])
+    error_z_list.append(error[2])
 
 #    while ((rospy.get_time() - tpre)< 0.001):pass
 #    tpre = rospy.get_time()
@@ -151,6 +148,37 @@ def main():
     # rospy.init_node('command', anonymous=True)
         rospy.Subscriber("/leg/joint_states", JointState, callback)
         rospy.spin()
+        if rospy.is_shutdown():
+            print("ROS is SHUTDOWN!!")
+            #############################################################################POSITION PLOT
+            plt.plot(t_list,x_list,linestyle='-',color='red',label='x_position')
+            plt.plot(t_list,xd_list,linestyle='--',color='b',label='x_d')
+            plt.plot(t_list,y_list,linestyle='-',color='blue',label='y_position')
+            plt.plot(t_list,yd_list,linestyle='--',color='b',label='y_d')
+            plt.plot(t_list,z_list,linestyle='-',color='y',label='z_position')
+            plt.plot(t_list,yd_list,linestyle='--',color='b',label='z_d')
+            
+            plt.plot()
+            plt.legend()
+            plt.title('K_p=50, x=(0.2)sin(0.5*pi.t),y=0.1, z=-0.275')
+            plt.xlabel('time')
+            plt.ylabel('position')
+            #plt.xlim([0,3.5])
+            plt.show()
+
+            ###############################################################################ERROR PLOT
+            # plt.plot(t_list,error_x_list,linestyle='-',color='red',label='error_x')
+            # plt.plot(t_list,error_y_list,linestyle='-',color='yellow',label='error_y')
+            # plt.plot(t_list,error_z_list,linestyle='-',color='blue',label='error_z')
+            
+            
+            # plt.plot()
+            # plt.legend()
+            # plt.title('K_p=50, x=(0.2)sin(0.5*pi.t),y=0.1, z=-0.275')
+            # plt.xlabel('TIME(s)')
+            # plt.ylabel('ERROR(m)')
+            # plt.xlim([1,7])
+            # plt.show()
       
 
 
