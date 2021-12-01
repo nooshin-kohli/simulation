@@ -38,7 +38,7 @@ def callback(data):
     qdot_rbdl[2] = qdot[3]
     qdot_rbdl[3] = qdot[0]
     robot = ROBOT(q_rbdl, qdot_rbdl,
-                  "/home/nooshin/minicheetah/src/first_leg/scripts/legRBDL.urdf")  # TODO: give your own urdf_path
+                  "/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/legRBDL.urdf")  # TODO: give your own urdf_path
     jc = robot.calcJc(q_rbdl)
     # print(q[0])
     pub_calf.publish(-0.1)
