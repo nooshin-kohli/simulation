@@ -169,29 +169,29 @@
   </joint>
   <link name="calf">
     <visual>
-      <origin rpy="0 0 0" xyz="0.0 0.01 -0.10574"/>
+      <origin rpy="0 0 0" xyz="0.0 0.01 -0.120"/>
       <geometry>
-        <box size="0.03 0.02 0.21148"/>
+        <box size="0.03 0.02 0.240"/>
           <!--mesh filename="package://first_leg/mesh/calf.dae" scale="1 1 1"/-->
       </geometry>
       <material name="white_blue"/>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.01 -0.10574"/>
+      <origin rpy="0 0 0" xyz="0.0 0.01 -0.120"/>
       <geometry>
-          <box size="0.03 0.02 0.21148"/>
+          <box size="0.03 0.02 0.240"/>
         <!--mesh filename="package://first_leg/mesh/Sim_0_00_04.STL" scale="1 1 1"/-->
       </geometry>
     </collision>
     <inertial>
-      <origin rpy="0 0 0" xyz="0.0 0.01 -0.10574"/>
+      <origin rpy="0 0 0" xyz="0.0 0.01 -0.120"/>
       <mass value="0.133"/>
       <inertia ixx="0.000214698666667" ixy="0.0" ixz="0.0" iyy="0.000214698666667" iyz="0.0" izz="2.73066666667e-06"/>
     </inertial>
   </link>
   <!-- //////////////////////foot//////////////////// -->
   <joint name="foot_fixed" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0 -0.21148"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.240"/>
 <!--    <origin rpy="0 0 0" xyz="0 0.01 -0.1881"/>-->
     <parent link="calf"/>
     <child link="foot"/>

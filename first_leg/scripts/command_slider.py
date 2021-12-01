@@ -1,9 +1,4 @@
 #! /usr/bin/env python3.6
-'''
-     Author: Nooshin Kohli
-     Year: 2021
-
-'''
 import numpy as np
 import rospy
 from numpy import ndarray
