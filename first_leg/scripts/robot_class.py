@@ -50,17 +50,17 @@ class ROBOT():
 
 
 
-<<<<<<< HEAD
+
 #q = np.zeros(3)
 #qdot = np.zeros(3)
 #r = ROBOT(q, qdot, "./leg_RBDL.urdf")
 
 #print(r.pose_end(q))
-=======
+
 # q = np.zeros(3)
 # qdot = np.zeros(3)
 # r = ROBOT(q, qdot, "./leg_RBDL.urdf")
 #
 # print(r.pose_end(q))
->>>>>>> 9acab8302a125e06e66a001ade83fd31600363d3
+
 
