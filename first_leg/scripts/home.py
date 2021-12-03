@@ -19,7 +19,7 @@ rospy.init_node('command', anonymous=True)
 tpre = time.time()
 
 robot = ROBOT(np.zeros(3), np.zeros(3),
-                  "/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/legRBDL.urdf")  # TODO: give your own urdf_path
+                  "/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/leg_RBDL.urdf")  # TODO: give your own urdf_path
 
 def callback(data):
     global tpre
