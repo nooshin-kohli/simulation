@@ -101,27 +101,27 @@
 
     <link name="trunk">
         <visual>
-        <origin rpy="0 0 0" xyz="0 0 0.75"/>
+        <origin rpy="0 0 0" xyz="0 0 0.045"/>
         <geometry>
-            <box size="0.06 0.06 1.5"/>
+            <box size="0.1 0.06 0.09"/>
         </geometry>
         <material name="white"/>
         </visual>
         <collision>
-            <origin rpy="0 0 0" xyz="0 0 0.75"/>
+            <origin rpy="0 0 0" xyz="0 0 0.045"/>
             <geometry>
-                <box size="0.06 0.06 1.5"/>
+                <box size="0.1 0.06 0.09"/>
             </geometry>
         </collision>
         <inertial>
-            <origin rpy="0 0 0" xyz="0 0 0.75"/>
+            <origin rpy="0 0 0" xyz="0 0 0.045"/>
             <mass value="100"/>
             <inertia ixx="0.011253" ixy="0" ixz="0.0" iyy="0.036203" iyz="-0.0" izz="0.042673"/>
             </inertial>
         </link>
 
     <joint name="trunk_to_world" type="fixed">
-        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <origin rpy="0 0 0" xyz="0 0 0.0"/>
         <parent link="world"/>
         <child link="trunk"/>
     </joint>
@@ -168,7 +168,7 @@
 <!--    </link>-->
 
     <joint name="hip_joint" type="revolute">
-        <origin rpy="0 0 0" xyz="0.03 0 0.9"/>
+        <origin rpy="0 0 0" xyz="0.05 0 0.0"/>
         <parent link="trunk"/>
         <child link="hip"/>
         <axis xyz="1 0 0"/>
