@@ -1,7 +1,4 @@
 #! /usr/bin/env python3.6 
-
-# AUTHOR : kohli , yazdi
-
 import numpy as np
 import rospy
 from numpy import ndarray
@@ -19,7 +16,7 @@ import matplotlib.pyplot as plt
 pub_calf = rospy.Publisher('/leg/calf_joint_position_controller/command', Float64, queue_size=10)
 pub_thigh = rospy.Publisher('/leg/thigh_joint_position_controller/command', Float64, queue_size=10)
 pub_hip = rospy.Publisher('/leg/hip_joint_position_controller/command', Float64, queue_size=10)
-robot = ROBOT(np.zeros(3), np.zeros(3), "/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/leg_RBDL.urdf")           # TODO: give your own urdf_path
+robot = ROBOT(np.zeros(3), np.zeros(3), "/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/leg_RBDL.urdf")  # TODO: give your own urdf_path
     
 rospy.init_node('command', anonymous=True)
 import sys
@@ -71,27 +68,55 @@ n   = 3 # number of links
 path =  "/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/leg_RBDL.urdf"
 robot = ROBOT(np.zeros((3, 1)), np.zeros((3, 1)), path) #model
 
-#q = np.array([-0., 0., -pi/6])
-q = np.array([-0.0231, 0., -0.9948])    # zero position given from the real robot now 
+# leg = Actuator('can0') #real robot
+# m1 = 0x01
+# m2 = 0x02
+# m3 = 0x05
+
+# kp = 40
+# kd = 1
+
+# leg.enable(m1)
+# leg.enable(m2)
+# leg.enable(m3)
+
+# x_home = home([leg, m1, m2, m3], kp=kp, kd=kd, enable_motors=False, disable_motors=False)
+
+# kp = 60
+# kd = 2
+
+
+# xh1 = x_home[0]
+# xh2 = x_home[1]
+# # xh3 = x_home[2] - 3.88 # different zero position
+# # xh3 = x_home[2] - 1.16 # different zero position
+# xh3 = x_home[2] - 3.7132
+
+# rx1 = leg.command(m1, xh1, 0, kp, 0, 0)
+# rx2 = leg.command(m2, xh2, 0, kd, 0, 0)
+# rx3 = leg.command(m3, 0, 0, 0, 0, 0) #TODO
+#q = robot2rbdl(rx1[1], rx2[1], rx3[1])
+q=np.array([-0.0231,-0.,-0.9948])
+#q = np.array([0., 0., -pi/6])
 qr_pre = q
 q_home = q
 x = robot.pose_end(np.array(q))
 home_pos  = x
 print ("Homing position", home_pos)
-# initial position and jacobian 
+
 Posi,Ji = modelKin(q)
 
 dt = 0.008
 tf  = 30;
 k   = 3   # task space dimension
 
+step1=0
+
+
 tvec  = np.arange(0, tf, dt)
-#print(tvec)
-#w = np.pi
-w=0.5*np.pi
+w = np.pi
 A = .1
-xxd = home_pos[0] + A*np.sin(w*tvec ) - .03
-# xxd = home_pos[0] + A*np.sin(w*tvec ) 
+xxd = home_pos[0] + A*np.sin(w*tvec ) - .02
 dxxd = A*w*np.cos(w*tvec)
 
 tpre = time.time()
@@ -115,12 +140,13 @@ D_IK= .001     # IK damping gain
 MaxI= 10         # Maximum number of iteration
 
 # # Position limits
+# Qmax = np.array([q_home[0] + pi/2, q_home[1] + pi/4, q_home[2] + pi/4])
+# Qmin = np.array([q_home[0] - pi/2, q_home[1] - pi/4, q_home[2] - pi/4])
 Qmax = np.array([q_home[0] + pi/2, q_home[1] + pi/4, q_home[2] + pi/4])
 Qmin = np.array([q_home[0] - pi/2, q_home[1] - pi/4, q_home[2] - pi/4])
 
-
 # Velocity limits
-Qdmax = 1*np.array([1., 1., 1.])
+Qdmax = 4*np.array([1., 1., 1.])
 v_eps = 1e-3
 Qdmin = -Qdmax;
 
@@ -147,7 +173,7 @@ CJNV    = zeros((dim,MaxI))   # critical joint number
 
 WM = np.diag(np.ones(n))
 
-def IK(Q, Traj, Dpd):
+def IK(Q, Traj, Dpd):######################################################################### INV KIN FUNCTION
     
     # Jacobian/Position extraction
     Pos,J = modelKin(Q);
@@ -232,10 +258,11 @@ def IK(Q, Traj, Dpd):
         CJNV[i,j] = CJN;
     
     return [Qd, s, Ji, Pos]
-i = 0
+######################################################################### INV KIN FUNCTION
 def get_state(data):
-    global t,tpre,xxd,dxxd,qr_pre,i
+    global t,tpre,xxd,dxxd,qr_pre,step1
     global tV,TrajV,PosV,QdV,QV,CJNV,sV,jV,CV,Q    
+    #for i in range(dim):
     q = data.position
     q = np.asarray(q)
     q_rbdl = np.zeros(3)
@@ -249,37 +276,35 @@ def get_state(data):
     qdot_rbdl[1] = qdot[2]
     qdot_rbdl[2] = qdot[0]
 
-    xd = np.array([xxd[i], home_pos[1], home_pos[2]])
-    dxd = np.array([dxxd[i], 0, 0])
-    
+    xd = np.array([xxd[step1], home_pos[1], home_pos[2]])
+   # xd = np.array([xxd[i], .0862, -.32])
+    dxd = np.array([dxxd[step1], 0, 0])
+    step1+=1
+    if step1>=tf/dt :
+        step1=0
     dqr, s, Ji, Pos = IK(q_rbdl, xd, dxd)  
-    # print(dqr)
-    qr = dqr*dt + qr_pre
-    # qr = -qr
-    # print(qr)
     
-    diff = np.abs(qr - q_rbdl)
-    # print(diff)
+    qr = dqr*dt + qr_pre
+    
+    diff = np.abs(qr - q)
 
     qr_pre = qr
-    # print(qr)
+    print(qr)
 
     pub_hip.publish(qr[0])
     pub_thigh.publish(qr[1])
     pub_calf.publish(qr[2])
 
-    x = robot.pose_end(np.array(qr))
+    x = robot.pose_end(np.array(q))
     
     #    %% Data saving
     CV[i,:] = cond(Ji)
     TrajV[i,:] = xd
     PosV[i,:] = x
-    QV[i,:] = qr
+    QV[i,:] = q
     QdV[i,:] = dqr
-    #tV[i,:] = dt*i
-    tV=tvec
+#     tV[i,:] = t
     sV[i,:] = s
-    i+=1 #### COUNTER FOR XD AND XXD
     
     tnow = time.time()
     # if tnow - tpre > dt:
@@ -293,11 +318,8 @@ def main():
     rospy.Subscriber("/leg/joint_states", JointState, get_state)
     rospy.spin()
     if rospy.is_shutdown():
-        print("TV:",tV)
         plt.figure();
         plt.subplot(211)
-        print("Traj:",TrajV)
-        print("pos:",PosV)
         plt.plot(tV,TrajV,'-',tV,PosV,'--')
         plt.title('Desired and actual trajectories')
         plt.subplot(212)
@@ -329,7 +351,7 @@ def main():
         plt.plot(tV,CV)
         plt.title('Jacobian Condition Number')
 
-        plt.show()
+        #plt.show()
 
 
 
@@ -339,3 +361,4 @@ if __name__=="__main__":
         main()
     except rospy.ROSInternalException:
         pass
+# %%

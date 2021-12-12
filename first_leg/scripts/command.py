@@ -93,14 +93,14 @@ def callback(data):
     #----------------------------------------------------------------DESIRE POSITION APPROACH
     inst=time.time()-tpast
     P_d=[0.2*np.sin(0.5*np.pi*inst),0.1,-0.275]
-    dp_d=[0.2*np.cos(np.pi*inst),0,0]
+    dp_d=[0.2*0.5*np.pi*np.cos(0.5*np.pi*inst),0,0]
     error=P_d-position
     # print("error:\n")
     print(error)
 #-------------------------------------------------------------------CALCULATE Q_d
     
    
-    Pdot_d=0+np.dot(error,kp)
+    Pdot_d=dp_d+np.dot(error,kp)
     qdot_d=np.dot(jc_inverse,Pdot_d)
     dt = time.time() - tpre
     tpre += dt
