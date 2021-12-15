@@ -1,0 +1,17 @@
+leg:
+  joint_states_controller:
+      type: joint_state_controller/JointStateController
+      publish_rate: 50
+  
+  jumper_effort_controller:
+    type: effort_controllers/JointEffortController
+    joint: jumper
+  hip_joint_effort_controller:
+    type: effort_controllers/JointEffortController
+    joint: hip_joint
+  thigh_joint_effort_controller:
+    type: effort_controllers/JointEffortController
+    joint: thigh_joint
+  calf_joint_effort_controller:
+    type: effort_controllers/JointEffortController
+    joint: calf_joint

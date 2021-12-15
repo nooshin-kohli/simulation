@@ -8,10 +8,10 @@ from std_msgs.msg import Float64, String, Int32, Int32MultiArray, MultiArrayLayo
 from robot_class import ROBOT
 import time
 
-pub_hip = rospy.Publisher('/leg/hip_joint_position_controller/command', Float64, queue_size=10)
-pub_thigh = rospy.Publisher('/leg/thigh_joint_position_controller/command', Float64, queue_size=10)
-pub_calf = rospy.Publisher('/leg/calf_joint_position_controller/command', Float64, queue_size=10)
-pub_slider = rospy.Publisher('/leg/jumper_position_controller/command', Float64, queue_size=10)
+pub_hip = rospy.Publisher('/leg/hip_joint_effort_controller/command', Float64, queue_size=10)
+pub_thigh = rospy.Publisher('/leg/thigh_joint_effort_controller/command', Float64, queue_size=10)
+pub_calf = rospy.Publisher('/leg/calf_joint_effort_controller/command', Float64, queue_size=10)
+pub_slider = rospy.Publisher('/leg/jumper_effort_controller/command', Float64, queue_size=10)
 rospy.init_node('command', anonymous=True)
 tpre = rospy.get_time()
 
@@ -36,14 +36,14 @@ def callback(data):
                   "/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/legRBDL.urdf")  # TODO: give your own urdf_path
     jc = robot.calcJc(q_rbdl)
     # print(q[0])
-    pub_calf.publish(-0.1)
-    pub_thigh.publish(0.1)
-    pub_hip.publish(0.2)
-    height = 0.4
-    pub_slider.publish(height)
+    # pub_calf.publish(-0.1)
+    # pub_thigh.publish(0.1)
+    # pub_hip.publish(0.2)
+    # height = 0.4
+    # pub_slider.publish(height)
 
-    while ((rospy.get_time() - tpre) < 0.001): pass
-    tpre = rospy.get_time()
+    # while ((rospy.get_time() - tpre) < 0.001): pass
+    # tpre = rospy.get_time()
 
 
 def main():
