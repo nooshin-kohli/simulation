@@ -38,6 +38,11 @@ class ROBOT():
         rbdl.InverseDynamics(self.model, q, qdot, qddot, Tau)
         return Tau
 
+    def pose_slider(self, q):
+        pose = rbdl.CalcBodyToBaseCoordinates(self.model, q, self.model.GetBodyId('hip'), np.array([0.0,0.0,0.00000]))
+        pose = pose + [0,0,0.1]
+        return pose
+
     def endpose_BodyCoordinate(self, body_name, q):   # this function returns end point in any body coordinate you want
         pose_base = rbdl.CalcBodyToBaseCoordinates(self.model,q, self.model.GetBodyId('calf'), self.end_point)
         pose = rbdl.CalcBaseToBodyCoordinate(self.model, q, self.model.GetBodyId(body_name), pose_base)

@@ -1,6 +1,5 @@
 <?xml version="1.0" ?>
-
-<!-- Author: Nooshin Kohli -->
+<!-- author = Nooshin Kohli -->
 
 <robot name="leg" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
@@ -175,7 +174,7 @@
     </link>
 
     <joint name="hip_joint" type="revolute">
-        <origin rpy="0 0 0" xyz="0.03 0 0"/>
+        <origin rpy="0 0 0" xyz="0.05 0 0"/>
         <parent link="jump"/>
         <child link="hip"/>
         <axis xyz="1 0 0"/>
@@ -215,28 +214,28 @@
 
   <link name="thigh">
     <visual>
-      <origin rpy="0 0 0" xyz="0 0.06 -0.10655"/>
+      <origin rpy="0 0 0" xyz="0 0.06 -0.105915"/>
       <geometry>
-        <box size="0.06 0.07125 0.2131"/>
+        <box size="0.06 0.07125 0.21183"/>
       </geometry>
       <material name="white_blue"/>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0.06 -0.10655"/>
+      <origin rpy="0 0 0" xyz="0 0.06 -0.105915"/>
       <geometry>
-        <box size="0.06 0.07125 0.2131"/>
+        <box size="0.06 0.07125 0.21183"/>
       </geometry>
       <material name="white_blue"/>
     </collision>
     <inertial>
-      <origin rpy="0 0 0" xyz="0.0 0.06 -0.10655"/>
+      <origin rpy="0 0 0" xyz="0.0 0.06 -0.105915"/>
       <mass value="1.062"/>
       <inertia ixx="0.00261820866667" ixy="0.0" ixz="0.0" iyy="0.00265482216667" iyz="0.0" izz="0.000158764166667"/>
     </inertial>
   </link>
   <!-- //////////////////////calf//////////////////// -->
   <joint name="calf_joint" type="revolute">
-    <origin rpy="0 0 0" xyz="0 0.07125 -0.2131"/>
+    <origin rpy="0 0 0" xyz="0 0.07125 -0.21183"/>
 <!--    <origin rpy="0 0 0" xyz="0 0.01 -0.1881"/>-->
     <parent link="thigh"/>
     <child link="calf"/>
@@ -246,29 +245,29 @@
   </joint>
   <link name="calf">
     <visual>
-      <origin rpy="0 0 0" xyz="0.0 0.01 -0.10574"/>
+      <origin rpy="0 0 0" xyz="0.0 0.01 -0.120"/>
       <geometry>
-        <box size="0.03 0.02 0.21148"/>
+        <box size="0.03 0.02 0.240"/>
           <!--mesh filename="package://first_leg/mesh/calf.dae" scale="1 1 1"/-->
       </geometry>
       <material name="white_blue"/>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.01 -0.10574"/>
+      <origin rpy="0 0 0" xyz="0.0 0.01 -0.120"/>
       <geometry>
-          <box size="0.03 0.02 0.21148"/>
+          <box size="0.03 0.02 0.240"/>
         <!--mesh filename="package://first_leg/mesh/Sim_0_00_04.STL" scale="1 1 1"/-->
       </geometry>
     </collision>
     <inertial>
-      <origin rpy="0 0 0" xyz="0.0 0.0 -0.10574"/>
+      <origin rpy="0 0 0" xyz="0.0 0.0 -0.120"/>
       <mass value="0.133"/>
       <inertia ixx="0.000214698666667" ixy="0.0" ixz="0.0" iyy="0.000214698666667" iyz="0.0" izz="2.73066666667e-06"/>
     </inertial>
   </link>
   <!-- //////////////////////foot//////////////////// -->
   <joint name="foot_fixed" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0 -0.21148"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.240"/>
 <!--    <origin rpy="0 0 0" xyz="0 0.01 -0.1881"/>-->
     <parent link="calf"/>
     <child link="foot"/>
