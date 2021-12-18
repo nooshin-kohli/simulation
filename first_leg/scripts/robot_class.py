@@ -1,5 +1,5 @@
 '''
-   Autor : Nooshin Kohli
+   Author : Nooshin Kohli
    Year : 2021
 '''
 import numpy as np

@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<!-- author = Nooshin Kohli -->
+
 
 <robot name="leg" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
@@ -148,7 +148,7 @@
         <child link="jump"/>
         <limit effort="20" lower="-0.7" upper="0.5" velocity="0.5"/>
         <origin rpy="0 0 0" xyz="0 0 0.9"/>
-        <dynamics damping="0.1" friction="1"/>
+        <dynamics damping="1" friction="0.1"/>
     </joint>
 
 
