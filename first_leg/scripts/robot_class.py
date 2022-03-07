@@ -1,6 +1,6 @@
 '''
    Author : Nooshin Kohli
-   Year : 2021
+   Year : 2021-2022
 '''
 import numpy as np
 import sys
@@ -65,7 +65,7 @@ class ROBOT():
     def set_input(self, tau):
         if len(tau) == self.qdim: self.u0 = np.dot(self.S, tau)
         else: self.u0 = tau
-        print(self.u0)
+        # print(self.u0)
 #        print self.u0
         return None
     
@@ -83,11 +83,12 @@ class ROBOT():
     def ComputeContactForce(self, qqdot, p, u):
         q = qqdot[:self.qdim] 
         qdot = qqdot[self.qdim:]
-        Jc = robot.calcJc(q,4)
+        Jc = self.calcJc(q)
         # Jc = self.Jc_from_cpoints(self.model, q, self.body, p)                             # TODO: Nooshin get this function
-        M = robot.CalcM(self.model, q)   
-        h = robot.Calch(self.model, q, qdot)
-        robot.ForwardDynamics(qqdot.flatten(), M, h, self.S, u, Jc, p)
+        M = self.CalcM(q)   
+        h = self.Calch(q, qdot)
+        # print(M)
+        self.ForwardDynamics(qqdot.flatten(), M, h, self.S, u, Jc, p)
         return None
 
     def SetGRF(self, p, values):                                            # TODO: what is this?
@@ -115,6 +116,8 @@ class ROBOT():
 #            self.Lambda[6:9] = values[p_3:p_3+3]
 #        if 4 in p:
 #            self.Lambda[9:] = values[p_4:p_4+3]
+        print("lambda is:")
+        print(values.reshape(3,1))
         return None
 
     def CalcAcceleration(self, q, qdot, qddot, body_id, body_point):
@@ -138,9 +141,8 @@ class ROBOT():
         
         
         k = len(cp)*self.point_F_dim
-        
-        Gamma = np.zeros(k)
-        
+        # Gamma = np.zeros(k)
+        Gamma = np.zeros((3,1))
         prev_body_id = 0
         
         gamma_i = np.zeros(self.point_F_dim)
@@ -148,14 +150,13 @@ class ROBOT():
         for i in range(k):
             
             if prev_body_id != self.cbody_id[i]:
-                gamma_i = rbdl.CalcPointAcceleration(self.model, q, qdot, np.zeros(self.qdim), self.cbody_id[i], self.end_point)[:2]                                          #TODO: [:2]?               
-                prev_body_id = self.cbody_id[i]
-                
-            Gamma[i] = - np.dot(Normal[i], gamma_i)
+                gamma_i = rbdl.CalcPointAcceleration(self.model, q, qdot, np.zeros(self.qdim), self.cbody_id[i], self.end_point)                                         #TODO: [:2]?               
+                prev_body_id = self.cbody_id[i]  
+            Gamma = gamma_i
         return Gamma
 
     def test(self,q):
-        print(robot.CalcM(q))
+        print(self.CalcM(q))
         return None
 
     
@@ -165,6 +166,7 @@ class ROBOT():
         qdim = self.qdim
         q = x[:qdim]
         qdot = x[qdim:]
+
         
         if fdim == 0:
             self.qddot = np.dot(np.linalg.inv(M), np.dot(S.T, self.u0) - h).flatten()         
@@ -175,25 +177,20 @@ class ROBOT():
             if np.nonzero(qdot)[0].any() and Jc.any():
 #                tic = time.time()
 #                gamma = self.CalcGamma(cpoints, q, qdot)
-                gamma = robot.CalcGamma(cpoints, q, qdot)
+                gamma = self.CalcGamma(cpoints, q, qdot)
 #                print gamma - mygamma
 #                toc = time.time() - tic
 #                print toc
             else:
                 gamma = - np.dot(np.zeros_like(Jc), qdot)
                     
-            
+            # print(gamma)
             aux1 = np.hstack((M, -Jc.T))
             aux2 = np.hstack((Jc, np.zeros((fdim, fdim))))
             A = np.vstack((aux1, aux2))
-            
-            B = np.vstack(((np.dot(S.T, tau) - h).reshape(qdim, 1), \
-            gamma.reshape(fdim, 1)))
-            
+            B = np.vstack(((tau - h).reshape(qdim, 1), gamma.reshape(fdim, 1)))
             res = np.dot(np.linalg.inv(A), B).flatten()
-            
             self.qddot = res[:-fdim]
-            
             self.SetGRF(cpoints,  res[-fdim:])                              
             
             
@@ -204,24 +201,28 @@ class ROBOT():
         return None
         
 
-
-
-
-
-
-
-
+# TODO: you can put print in every function you want to use:
+# TODO: I put print in setGRF function for calculating lambda
 q = np.zeros(4)
-# q[1] = np.pi/2
+q[1] = np.pi/2
 qdot = np.zeros(4)
-robot = ROBOT(q, qdot, "/home/nooshin/minicheetah/src/first_leg/scripts/legRBDL.urdf")
-x_dot = np.array([0.0,0.0,0.0])
-j = robot.calcJc(q)
-j_sudo_inv = np.dot(np.transpose(j),np.linalg.inv(np.dot(j,np.transpose(j))))
-qdot_d = np.dot(j_sudo_inv,x_dot)
+qdot[2]= 0.3
+robot = ROBOT(q, qdot, "/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/legRBDL.urdf")
+tau = np.zeros(4)
+robot.set_input(tau)
+# print(robot.CalcM(q))
+# print(robot.Calch(q,qdot))
+p = [1]
+qqdot = np.zeros(8)
+# print(robot.CalcGamma([1],q,qdot))
+print(robot.ComputeContactForce(qqdot,p,tau))
+# print(robot.calcJc(q))
+# x_dot = np.array([0.0,0.0,0.0])
+# j = robot.calcJc(q)
+# j_sudo_inv = np.dot(np.transpose(j),np.linalg.inv(np.dot(j,np.transpose(j))))
+# qdot_d = np.dot(j_sudo_inv,x_dot)
 
-# # TODO: for jacobian use q and the number of joints like example bellow:
-# print(robot.calcJc(q,4))
+
 
 
 
