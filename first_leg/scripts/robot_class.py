@@ -2,6 +2,7 @@
    Author : Nooshin Kohli
    Year : 2021-2022
 '''
+from doctest import Example
 import numpy as np
 import sys
 from os.path import expanduser
@@ -13,8 +14,13 @@ import rbdl
 
 
 class ROBOT():
-    def __init__(self, q, qdot, urdf_path):     # TODO: path to leg_RBDL.urdf for robot without slider and legRBDL.urdf for slider
-        self.model = rbdl.loadModel(urdf_path)
+    def __init__(self, q, qdot, mode):     # TODO: path to leg_RBDL.urdf for robot without slider and legRBDL.urdf for slider
+        if mode =='slider':
+            #self.model = rbdl.loadModel("/home/nooshin/minicheetah/src/first_leg/scripts/legRBDL.urdf")
+             self.model = rbdl.loadModel("/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/legRBDL.urdf")
+        else:
+            #self.model = rbdl.loadModel("/home/nooshin/minicheetah/src/first_leg/scripts/leg_RBDL.urdf")
+            self.model = rbdl.loadModel("/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/leg_RBDL.urdf")
         self.q = q
         self.qdot = qdot
         self.calf_length = -0.240
@@ -22,7 +28,13 @@ class ROBOT():
         self.fb_dim = 3                                                          # TODO: check this
         self.point_F_dim = 1                                                     # TODO: check this
         self.qdim = self.model.q_size
+        self.mass_hip = 0.63
+        self.mass_thigh = 1.062
+        self.mass_calf = 0.133 
         self.S = np.hstack((np.zeros((self.qdim - self.fb_dim, self.fb_dim)), np.eye(self.qdim - self.fb_dim)))
+        # self.calcJc = self.calcJc(self.q)
+        # self.Calch = self.Calch(self.q,self.qdot)
+        # self.CalcM = self.CalcM(self.q)
 
 
     def calcJc(self, q):
@@ -42,6 +54,11 @@ class ROBOT():
         pose = rbdl.CalcBodyToBaseCoordinates(self.model, q, self.model.GetBodyId('jump'), np.array([0.0,0.0,0.00000]))
         return pose
 
+    def vel_slider(self,q,qdot):
+        vel = rbdl.CalcPointVelocity(self.model, q, qdot, self.model.GetBodyId('jump'), np.array([0.0,0.0,0.00000]))
+        return vel
+
+
     def CalcTau(self, q, qdot, qddot):
         Tau = np.zeros(self.model.q_size)
         rbdl.InverseDynamics(self.model, q, qdot, qddot, Tau)
@@ -57,7 +74,7 @@ class ROBOT():
         a_end_world = rbdl.CalcBodyToBaseCoordinates(self.model, q, self.model.GetBodyId('calf'), a_end)
         return a_end_world
 
-    def inv_kin(q,qdot,qddot,size,model):
+    def inv_kin(q, qdot, qddot, size, model):
         Tau = np.zeros(size)
         Tau = rbdl.InverseDynamics(model, q, qdot, qddot, Tau)
         return Tau
@@ -75,6 +92,45 @@ class ROBOT():
         # self.CalcM= M
         return M
 
+    def CalcBodyToBase(self, body_id, body_point_position, \
+    calc_velocity = False, update_kinematics=True, index = -1, q = None, qdot = None):
+        if q is not None: qq = q
+        else: qq = self.q[index, :]
+        pose = rbdl.CalcBodyToBaseCoordinates(self.model, qq, \
+            body_id, body_point_position, update_kinematics)
+        if not calc_velocity: return pose
+        else:
+            if qdot is not None: qqdot = qdot
+            else: qqdot = self.qdot[index, :]
+            vel = rbdl.CalcPointVelocity(self.model, qq, \
+            qqdot, body_id, body_point_position, update_kinematics)
+            return pose, vel
+
+    def calculateBodyCOM(self, q, dq, calc_velocity, update):
+        p1 = self.CalcBodyToBase(self.model.GetBodyId('hip'), 
+                                    np.array([0.03, 0 ,0.0]),
+                                    update_kinematics = update,
+                                    q = q, qdot = dq, calc_velocity = calc_velocity)
+        p2 = self.CalcBodyToBase(self.model.GetBodyId('thigh'), 
+                                    np.array([0.0, 0.06, -0.02]),
+                                    update_kinematics = update,
+                                    q = q, qdot = dq, calc_velocity = calc_velocity)
+        p3 = self.CalcBodyToBase(self.model.GetBodyId('calf'), 
+                                    np.array([0., 0.01, self.calf_length]),
+                                    update_kinematics = update,
+                                    q = q, qdot = dq, calc_velocity = calc_velocity)
+        
+        if not calc_velocity:
+            com = (self.mass_hip*p1 + self.mass_thigh*p2 + self.mass_calf*p3)/\
+                (self.mass_hip + self.mass_thigh + self.mass_calf)
+            vel = None
+        else:
+            com = (self.mass_hip*p1[0] + self.mass_thigh*p2[0] + self.mass_calf*p3[0])/\
+                    (self.mass_hip + self.mass_thigh + self.mass_calf)
+            vel = (self.mass_hip*p1[1] + self.mass_thigh*p2[1] + self.mass_calf*p3[1])/\
+                    (self.mass_hip + self.mass_thigh + self.mass_calf)
+        return com,vel
+
     def Calch(self, q, qdot):
         h = np.zeros(self.model.q_size)
         rbdl.InverseDynamics(self.model, q, qdot, np.zeros(self.model.qdot_size), h)
@@ -88,8 +144,8 @@ class ROBOT():
         M = self.CalcM(q)   
         h = self.Calch(q, qdot)
         # print(M)
-        self.ForwardDynamics(qqdot.flatten(), M, h, self.S, u, Jc, p)
-        return None
+        res_final=self.ForwardDynamics(qqdot.flatten(), M, h, self.S, u, Jc, p)
+        return res_final
 
     def SetGRF(self, p, values):                                            # TODO: what is this?
 #        print 'yes', p
@@ -158,7 +214,75 @@ class ROBOT():
     def test(self,q):
         print(self.CalcM(q))
         return None
+    
+    def Liftoff_GRF(self, t, y, leg):
+        if hasattr(self, 'for_refine'): u = self.u[-1, :]
+        else:
+            yprev = np.concatenate((self.q[-1, :], self.qdot[-1, :]))
+            if np.allclose(y, yprev): u = self.u[-1, :]
+            else: u = self.u0 
+    #        index = self.__p0.index(leg)
+        self.ComputeContactForce(y, self.__p0, u)
+        if leg == 1: tt = self.tt_h
+        elif leg == 2: tt = self.tt_f
+        
+        if t - tt < .25*self.slip_st_dur:
+            return -1
+        else:
+            return - self.Lambda[(leg - 1)*2 + 1]
+    #        if leg == 1: return t - self.tt_h - self.slip_st_dur
+    #        elif leg == 2: return t - self.tt_f - self.slip_st_dur
+    #        elif leg == 2: return - self.Lambda[(leg - 1)*2 + 1] - 50
+    
+    def __dyn(self, x, t):
+        """
+        .dyn  evaluates system dynamics
+        """
+        q = x[:self.qdim]
+        qd = x[self.qdim:]
+                
+        self.M = self.CalcM(self.model, q)
+        self.Jc = self.Jc_from_cpoints(self.model, q, self.body, self.__p0)
+        self.h = self.Calch(self.model, q, qd)
+        
+        self.ForwardDynamics(x, self.M, self.h, self.S, self.u0, self.Jc, self.__p0) 
+        
+        dx = np.concatenate((qd, self.qddot.flatten()))
 
+        return dx
+
+
+
+    def dyn_RK4(self, t, x):
+        """
+        .dyn  evaluates system dynamics
+        """
+        return self.__dyn(x, t)
+    
+    def RK4(self, f):
+        return lambda t, y, dt: (
+                lambda dy1: (
+                lambda dy2: (
+                lambda dy3: (
+                lambda dy4: (dy1 + 2*dy2 + 2*dy3 + dy4)/6
+                )( dt * f( t + dt  , y + dy3   ) )
+    	    )( dt * f( t + dt/2, y + dy2/2 ) )
+    	    )( dt * f( t + dt/2, y + dy1/2 ) )
+    	    )( dt * f( t       , y         ) )
+    
+    def interpl(self, evtFun, *args):       
+        t0, t1 = self.t0, self.t0 + self.dt
+        y0 = self.qqdot0forRefine.copy()
+        f0 = evtFun(t0, y0, *args)
+        dy = self.RK4(self.dyn_RK4)
+        y1 = y0 + dy(t0, y0, np.abs(t1 - t0)).flatten()
+        f1 = evtFun(t1, y1, *args)
+#        print 't0,f0,t1,f1', t0,f0,t1,f1
+        if np.abs(f0)<np.abs(f1): self.for_refine = True
+        t = t0 - f0*(t1 - t0)/(f1 - f0)
+        y = y0 + dy(t0, y0, np.abs(t - t0)).flatten()
+        if hasattr(self, 'for_refine'): del self.for_refine
+        return t, y.reshape(1, self.qdim*2)
     
     
     def ForwardDynamics(self, x, M, h, S, tau, Jc, cpoints):
@@ -184,7 +308,7 @@ class ROBOT():
             else:
                 gamma = - np.dot(np.zeros_like(Jc), qdot)
                     
-            # print(gamma)
+            #print("gamma:", gamma)
             aux1 = np.hstack((M, -Jc.T))
             aux2 = np.hstack((Jc, np.zeros((fdim, fdim))))
             A = np.vstack((aux1, aux2))
@@ -193,34 +317,23 @@ class ROBOT():
             self.qddot = res[:-fdim]
             self.SetGRF(cpoints,  res[-fdim:])                              
             
+ #	    print("=======================================")
+#           print("result:", res)
             
 #            print "======================================="            
 #            print 'p, lambda:', self.__p[-1], self.Lambda
 #            print "======================================="
         
-        return None
+        return res
+    
+
+    
         
 
-# TODO: you can put print in every function you want to use:
-# TODO: I put print in setGRF function for calculating lambda
-q = np.zeros(4)
-q[1] = np.pi/2
-qdot = np.zeros(4)
-qdot[2]= 0.3
-robot = ROBOT(q, qdot, "/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/legRBDL.urdf")
-tau = np.zeros(4)
-robot.set_input(tau)
-# print(robot.CalcM(q))
-# print(robot.Calch(q,qdot))
-p = [1]
-qqdot = np.zeros(8)
-# print(robot.CalcGamma([1],q,qdot))
-print(robot.ComputeContactForce(qqdot,p,tau))
-# print(robot.calcJc(q))
-# x_dot = np.array([0.0,0.0,0.0])
-# j = robot.calcJc(q)
-# j_sudo_inv = np.dot(np.transpose(j),np.linalg.inv(np.dot(j,np.transpose(j))))
-# qdot_d = np.dot(j_sudo_inv,x_dot)
+#TODO:Example:
+# q = np.zeros(4)
+# qdot = np.zeros(4)
+# robot = ROBOT(q, qdot, mode='slider')
 
 
 
