@@ -15,7 +15,7 @@ from leg_importmodel import BodyClass3d, JointClass3d
 
 
 class ROBOT():
-    def __init__(self, t, dt, q, p, mode, qdot,param=None,terrain = None):    
+    def __init__(self, t, dt, q, p, mode, qdot, u, param=None,terrain = None):    
         if mode =='slider':
             self.model = rbdl.loadModel("/home/nooshin/minicheetah/src/first_leg/scripts/legRBDL.urdf")
             # self.model = rbdl.loadModel("/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/legRBDL.urdf")
@@ -24,9 +24,12 @@ class ROBOT():
             # self.model = rbdl.loadModel("/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/leg_RBDL.urdf")
         self.body = BodyClass3d()
         self.joint = JointClass3d()
+        self.g0 = -9.81
         self.q = q
         self.qdot = qdot
         self.calf_length = -0.240
+        self.hip_length = -0.93
+        self.thigh_length = -0.21183
         self.end_point = np.asarray([0.0, 0.0, self.calf_length])
         if param is None:
             self.body.l_end = self.end_point
@@ -36,13 +39,16 @@ class ROBOT():
         self.fb_dim = 3                                                          # TODO: check this
         self.point_F_dim = 1                                                     # TODO: check this
         self.qdim = self.model.q_size
-        self.model.dof_count = self.model.q_size
+        # self.model.dof_count = self.model.q_size
         self.mass_hip = 0.63
         self.mass_thigh = 1.062
         self.mass_calf = 0.133
         self.total_mass = self.mass_hip+ self.mass_thigh+ self.mass_calf 
         self.S = np.hstack((np.zeros((self.qdim - self.fb_dim, self.fb_dim)), np.eye(self.qdim - self.fb_dim)))
         self.__p = list(p) # contact feet
+
+        if u.any(): self.u = np.array(u) # joint inputs
+        else: self.u = np.zeros((1, self.qdim - self.fb_dim))
 
         self.t = np.array([t])
         self.dt = dt 
@@ -56,9 +62,11 @@ class ROBOT():
             return 0
 
 
-    def calcJc(self, q):
+    def calcJc(self, q=None):
+        if q is not None: qq = q
+        else: qq= self.q
         jc = np.zeros((3, self.qdim))
-        rbdl.CalcPointJacobian(self.model, q, self.model.GetBodyId('calf'), self.end_point, jc)
+        rbdl.CalcPointJacobian(self.model, qq, self.model.GetBodyId('calf'), self.end_point, jc)
         return jc
 
     def Jc_from_cpoints(self, q, cpoints):
@@ -368,7 +376,7 @@ class ROBOT():
             p0.append(1)
             qdot = self.UpdateQdotCollision(q, qdot, p0)
             self.tt_h = self.trefined
-            self.foot_pose_h = self.computeFootState('h', q = q)[0]
+            self.foot_pose_h = self.computeFootState('slider', q = q)[0]
             self.xt_h = self.get_com(body_part = 'h', q = q) 
             
         elif self.ev_i == 1: # and not 2 in p0 # touchdown of fore leg
@@ -382,7 +390,7 @@ class ROBOT():
             p0.remove(1)
             self.tl_h = self.trefined
             self.xl_h, self.dxl_h = \
-            self.get_com(body_part = 'h', q = q, calc_velocity = True) 
+            self.ev_ilf.get_com(body_part = 'slider', q = q, calc_velocity = True) 
             #TODO: should be leg specific?
 #            self.slip_sw_dur = \
 #            max(self.slip_sw_dur, self.predictNextLiftoff(self.xl_h[1], self.dxl_h[1]))
@@ -457,7 +465,7 @@ class ROBOT():
         return M
 
     def CalcBodyToBase(self, body_id, body_point_position, \
-    calc_velocity = False, update_kinematics=True, index = -1, q = None, qdot = None):
+    calc_velocity = False, update_kinematics=True,index=-1, q=None, qdot=None):
         if q is not None: qq = q
         else: qq = self.q[index, :]
         pose = rbdl.CalcBodyToBaseCoordinates(self.model, qq, \
@@ -494,6 +502,128 @@ class ROBOT():
             vel = (self.mass_hip*p1[1] + self.mass_thigh*p2[1] + self.mass_calf*p3[1])/\
                     (self.mass_hip + self.mass_thigh + self.mass_calf)
         return com,vel
+    
+
+    def CalcBodyToBase(self, body_id, body_point_position, \
+    calc_velocity = False, update_kinematics=True, index = -1, q = None, qdot = None):
+        if q is not None: qq = q
+        else: qq = self.q[index, :]
+        pose = rbdl.CalcBodyToBaseCoordinates(self.model, qq, \
+            body_id, body_point_position, update_kinematics)
+        if not calc_velocity: return pose
+        else:
+            if qdot is not None: qqdot = qdot
+            else: qqdot = self.qdot[index, :]
+            vel = rbdl.CalcPointVelocity(self.model, qq, \
+            qqdot, body_id, body_point_position, update_kinematics)
+            return pose, vel
+
+    def calcJdQd(self,body):
+        actual_bodies = ['jump','hip','thigh','calf']
+        jdqds = dict()
+        
+        for body in self.body.bodies:
+            if body in actual_bodies:
+                if body == 'slider':
+                    pos = (1/2)*self.hip_length
+                elif body == 'hip':
+                    pos = (1/2)*self.hip_length
+                elif body == 'thigh':
+                    pos = (1/2)*self.thigh_length
+                elif body == 'calf':
+                    pos = (1/2)*self.calf_length
+                point_position = np.array([0., 0., pos])
+
+                
+                gamma_i = rbdl.CalcPointAcceleration(self.model, self.q[-1],\
+                self.qdot[-1], np.zeros(self.qdim), self.body.id(body), \
+                point_position)
+                jdqds[body] = gamma_i
+        
+        
+        M = self.total_mass+0.002
+        
+        jdqd = (0.002 * jdqds['slider'] + self.mass_hip * jdqds['hip'] +\
+                  self.mass_thigh * jdqds['thigh']+self.mass_calf * jdqds['calf']) / M
+                  
+                
+        return jdqd                                          
+
+    
+    def get_com(self, calc_velocity = False, calc_angular_momentum = False, \
+    update = True, index = -1, body_part = 'robot', q = None, qdot = None):      
+        '''
+        computes position and velocity of COM of a body or whole robot
+        '''
+        mass = 0
+        qddot = np.zeros(4)
+        com = np.zeros(3)
+        if calc_velocity: com_vel = np.zeros(3)
+        else: com_vel = None
+        if calc_angular_momentum: 
+            angular_momentum = np.zeros(3)
+            # print("ok")
+        else: 
+            angular_momentum = None
+        if q is not None: qq = q
+        else: qq = self.q[index, :]
+        if qdot is not None: qqdot = qdot
+        else: qqdot = self.qdot[index, :]
+        if body_part == 'robot':
+            rbdl.CalcCenterOfMass(self.model, q = qq, qdot = qqdot,\
+                 com = com, qddot=qddot , com_velocity = com_vel, angular_momentum=angular_momentum, update_kinematics=update)            
+        
+            if calc_velocity and calc_angular_momentum:
+                return com, com_vel, angular_momentum
+            elif calc_velocity and not calc_angular_momentum:
+                return com, com_vel
+            else: return com
+        else:
+            com, vel = self.__calculateBodyCOM(qq, \
+            qqdot, calc_velocity, update, body_part)
+            if calc_velocity:
+                return com, vel
+            else:
+                return com 
+        
+    
+    def __calculateBodyCOM(self, q, dq, calc_velocity, update, body_part):
+        if body_part == 'slider':
+            p1 = self.CalcBodyToBase(self.model.GetBodyId('hip'), 
+                                     np.array([0.0, 0.036, 0.0]),
+                                     update_kinematics = update,
+                                     q = q, qdot = dq, calc_velocity = calc_velocity)
+            p2 = self.CalcBodyToBase(self.model.GetBodyId('thigh'), 
+                                     np.array([0.0, 0.0, 0.0]),
+                                     update_kinematics = update,
+                                     q = q, qdot = dq, calc_velocity = calc_velocity)
+            p3 = self.CalcBodyToBase(self.model.GetBodyId('calf'), 
+                                     np.array([0.0, 0.0, (1/2)*self.calf_length]),
+                                     update_kinematics = update,
+                                     q = q, qdot = dq, calc_velocity = calc_velocity)
+            
+            if not calc_velocity:
+                com = (self.mass_hip*p1 + self.mass_thigh*p2 + self.mass_calf*p3)/\
+                  (self.mass_hip + self.mass_thigh + self.mass_calf)
+                vel = None
+            else:
+                com = (self.mass_hip*p1[0] + self.mass_thigh*p2[0] + self.mass_calf*p3[0])/\
+                      (self.mass_hip + self.mass_thigh + self.mass_calf)
+                vel = (self.mass_hip*p1[1] + self.mass_thigh*p2[1] + self.mass_calf*p3[1])/\
+                      (self.mass_hip + self.mass_thigh + self.mass_calf)
+                
+        return com, vel
+            
+    def computeFootState(self, body_part, \
+                         calc_velocity = False, update_kinematics=True, \
+                         index = -1, q = None, qdot = None):
+        
+        point = np.array([0., 0., self.calf_length])
+        if body_part == 'slider': body_id = self.model.GetBodyId('FR_calf')     
+        return self.CalcBodyToBase(body_id, point, \
+                            calc_velocity = calc_velocity, \
+                            update_kinematics = update_kinematics,\
+                            index = index, q = q, qdot = q)
 
     def Calch(self, q, qdot):
         h = np.zeros(self.model.q_size)
@@ -574,10 +704,6 @@ class ROBOT():
                 prev_body_id = self.cbody_id[i]  
             Gamma = gamma_i
         return Gamma
-
-    def test(self,q):
-        print(self.CalcM(q))
-        return None
     
     def Liftoff_GRF(self, t, y, leg):
         if hasattr(self, 'for_refine'): u = self.u[-1, :]
@@ -697,17 +823,13 @@ class ROBOT():
     
 
     def computeJacobian23(self, body_part, swapped = False):
-        q = self.q[-1, :]
-        if body_part == 'h':
+        q = self.q
+        if body_part == 'slider':
             th2 = q[2] + q[3]
             th3 = q[4]
             l1 = self.param.l2h
             l2 = self.param.l3h
-        elif body_part == 'f':
-            th2 = q[2] + q[5] + q[6]
-            th3 = q[7]
-            l1 = self.param.l2f
-            l2 = self.param.l3f
+        else:print("body does not exist!!!")
             
         if swapped:
             temp = l1; l1 = l2; l2 = temp
@@ -734,10 +856,20 @@ class ROBOT():
         
 
 #TODO:Example:
-# q = np.zeros(4)
-# qdot = np.zeros(4)
-# robot = ROBOT(q, qdot, mode='slider')
+t = np.array([0])
+dt = .002  # step size
 
+# initiate stats with dummy values
+q = np.zeros(4) # joint position
+qdot = np.zeros(4) # joint velocity
+u = np.zeros(4) # control inputs
+
+
+p = [[1]] # the contact feet
+robot = ROBOT(t,dt,q,p,'slider',qdot,u)
+print(robot.get_com(calc_velocity=True,calc_angular_momentum=False,update=True,body_part='slider',q=q,qdot=qdot))
+print(robot.getContactFeet())
+print(robot.S)
 
 
 

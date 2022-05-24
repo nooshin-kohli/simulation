@@ -33,22 +33,23 @@ exec(compile(open('./functions.py', "rb").read(), './functions.py', 'exec'))
 plt.close('all')
 
 # assign robot parameters inside PhyParam class:
-param = PhyParam()
+# param = PhyParam()
 
 
 
 
 # generate lua model
-write_lua(param)
-lua_file = 'robot2d.lua'
+# write_lua(param)
+# lua_file = 'robot2d.lua'
+mode = 'slider'
 
 # initiate time array
 t = np.array([0])
 dt = .002  # step size
 
 # initiate stats with dummy values
-q = np.zeros((1, 0)) # joint position
-qdot = np.zeros((1, 0)) # joint velocity
+q = np.zeros(4) # joint position
+qdot = np.zeros(4) # joint velocity
 u = np.zeros((1, 0)) # control inputs
 
 
@@ -56,22 +57,24 @@ p = [[]] # the contact feet
 # strange behavior when contact = [[1, 2]] and the legs are upright!!!!
 
 # instanciate robot object:
-cr = ROBOT(t, q, qdot, p, u, dt, lua_file, param)
+cr = ROBOT(t, dt, q, p, mode, qdot, u)
 
 #==============================================================================
 # create initial configuration
 #==============================================================================
 
 #guess the initial config:
-angle1 = np.deg2rad(20)
-angle2 = np.deg2rad(100)
-angle3 = np.deg2rad(80)
-cr.q[-1, cr.joint.q_i('j1h')] = np.pi + angle1
-cr.q[-1, cr.joint.q_i('j2h')] = + angle2
-cr.q[-1, cr.joint.q_i('j3h')] = - angle3
-cr.q[-1, cr.joint.q_i('j1f')] = - angle1 - cr.q[-1, cr.joint.q_i('j1h')]
-cr.q[-1, cr.joint.q_i('j2f')] = - angle2
-cr.q[-1, cr.joint.q_i('j3f')] = + angle3
+# angle1 = np.deg2rad(20)
+# angle2 = np.deg2rad(100)
+# angle3 = np.deg2rad(80)
+cr.q=q
+cr.qdot=qdot
+# cr.q[-1, cr.joint.q_i('j1h')] = np.pi + angle1
+# cr.q[-1, cr.joint.q_i('j2h')] = + angle2
+# cr.q[-1, cr.joint.q_i('j3h')] = - angle3
+# cr.q[-1, cr.joint.q_i('j1f')] = - angle1 - cr.q[-1, cr.joint.q_i('j1h')]
+# cr.q[-1, cr.joint.q_i('j2f')] = - angle2
+# cr.q[-1, cr.joint.q_i('j3f')] = + angle3
 
 #cr.q[-1, cr.joint.q_i('reference_TY')] = - cr.CalcBodyToBase(cr.body.id('b3f'),
 #                            np.array([cr.body.l_end, 0., 0.]))[1]
@@ -123,8 +126,7 @@ dx0_f = dx0_h
 
 #x_f, y_f =  x_h + horiz_shift, y_h + horiz_shift
 
-des_config = tt, tl, ta, x0_h, xt_h, xl_h, xa_h, x_foot_h, dx0_h,\
-                         x0_f, xt_f, xl_f, xa_f, x_foot_f, dx0_f
+des_config = tt, tl, ta, x0_h, xt_h, xl_h, xa_h, x_foot_h, dx0_h
                          
 
 
@@ -137,7 +139,6 @@ cr.slip_st_length = xl_h - xt_h
 
 
 cr.tl_h = -1/2*cr.slip_sw_dur
-cr.tl_f = cr.tl_h
 
 cr.slip_nominal_vel = dx0_h[0]
 
@@ -221,9 +222,8 @@ Time_end = ta * 5
 # Time_end = 0.01
 
 cr.coms_h = cr.get_com(body_part='h')
-cr.coms_f = cr.get_com(body_part='f')
 cr.coms_vel_h = cr.get_com(body_part='h',calc_velocity=True)[1]
-cr.coms_vel_f = cr.get_com(body_part='f',calc_velocity=True)[1]
+
 
 #qdes = cr.q[0, 3:]
 #qdes[2] += np.deg2rad(0)

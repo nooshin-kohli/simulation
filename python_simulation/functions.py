@@ -1,46 +1,45 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
-@author: Nooshin Kohli
+Created on Fri Nov  3 18:00:04 2017
+
+@author: mshahbazi
 """
 
 import numpy as np
 import copy
 from leg_robotclass import ROBOT
+from leg_controlclass import leg_controlclass
 from scipy.optimize import root
-from leg_controlclass import leg_controlclass, Control
 
 #==============================================================================
 # swing control
 #==============================================================================
-def ctrl_swing(robot, body_part):
-    kp = np.diag([2500,2500])
-    kd = np.diag([250,250])
+def ctrl_swing(robot, body_part,q,qdot):
+    kp = np.diag([2500, 2500,2500])
+    kd = kp/10
 #    desired_param = t, tt, tl, ta, xt, xl, x_foot, dx0
-
-# location and velocity of body COM
-    r, dr = robot.get_com(body_part = body_part, calc_velocity = True)
-    
+#TODO: in get_com you should pass q and qdot
+    r, dr = robot.get_com(body_part = 'slider', calc_velocity = True, q=q, qdot=qdot)
     
     x_des, dx_des = computeDesiredFootState(robot, body_part, r, dr)
-#    print 'x_des', x_des
     x, dx = robot.computeFootState(body_part, calc_velocity = True)
-    e = x_des - x[:2]
     
-    de = dx_des - dx[:2]
+
+    e = x_des - x
+    de = dx_des - dx
+
 #    print body_part, e
 #    print 'de', de
     F = np.dot(kp, e) + np.dot(kd, de)
+
+#TODO: QUES??????
     J23 = robot.computeJacobian23(body_part = body_part)
-    #return u[0] , u[1] if bodypart is h
-    #return u[3] , u[4] id bodypart is f
     return np.dot(J23.T, F)
-    
-    
 #==============================================================================
 #  stance control
 #============================================================================== 
-def ctrl_stance(robot, body_part):
+def ctrl_stance(robot, body_part,only_force=False):
 
     
     t = robot.t[-1][0] + robot.dt
@@ -48,8 +47,9 @@ def ctrl_stance(robot, body_part):
         tt = robot.tt_h
         xt = robot.xt_h[0]
         xl_expected = robot.foot_pose_h + robot.slip_st_xl
-        mg = (robot.param.m_hip + robot.param.m_thigh + robot.param.m_calf)*robot.param.g0
-    
+        mg = (robot.mass_hip + robot.mass_thigh + robot.masss_calf)*robot.g0
+
+    else: print("body part does not exist!!!")
     tl = tt + robot.slip_st_dur
 
     tau = (t - tt)/(tl - tt) 
@@ -65,97 +65,133 @@ def ctrl_stance(robot, body_part):
     
     if grf_flag_time:   
         fx = mg*robot.slip_fun_grf_x_t(tau)
-        fy = mg*robot.slip_fun_grf_y_t(tau)
+        fz = mg*robot.slip_fun_grf_y_t(tau)
     else:
         fx = mg*robot.slip_fun_grf_x_s(s)
-        fy = mg*robot.slip_fun_grf_y_s(s)
+        fz = mg*robot.slip_fun_grf_y_s(s)
    
     
 #    if body_part == 'f':
 #        print tau, fx
-    F = np.array([fx, fy]).flatten()
+    F = np.array([fx, 0.0, fz]).flatten()
+    if only_force:
+        return F
+    
+    J34 = robot.calcJc()
     J23 = robot.computeJacobian23(body_part = body_part)
-    tau = np.dot(J23.T, F)
+    tau = np.dot(J34.T, F)
+
             
     return -tau.flatten()
+
+
+
+#==============================================================================
+# Inverse Dynamics Control
+#==============================================================================
+def ctrl_stance_ID(robot,x_des,xd_des,xdd_des):
     
 
-def ctrl_stance_IK(robot):  
     
-    t = robot.t[-1][0] + robot.dt
-    
-    tt_h = robot.tt_h
-    xt_h = robot.xt_h[0]
-    xl_expected_h = robot.foot_pose_h + robot.slip_st_xl
+    xdd_ref = compute_xddref(robot,x_des,xd_des,xdd_des)
+    # XDD_ref.append(xdd_ref)
+    qdd_des = compute_qddot_des(robot,xdd_ref)
+    # planer = Centauro_PlannerClass(robot)
+    # x_des = np.append(x_des.flatten()[:2],0)
+    # xd_des = np.append(x_des.flatten()[:2],0)
+    # xdd_des = np.append(x_des.flatten()[:2],0)
+    # qdd_des = planer.qddot_from_xbase_no_hierarchi(xddot_des=xdd_des,x_des=x_des,xdot_des=xd_des)
 
-   
-    tt_f = robot.tt_f
-    xt_f = robot.xt_f[0]
-    xl_expected_f = robot.foot_pose_f + robot.slip_st_xl
-
-    tl_h = tt_h + robot.slip_st_dur
-    tl_f = tt_f + robot.slip_st_dur
-
-    tau_h = (t - tt_h)/(tl_h - tt_h) 
-    tau_f = (t - tt_f)/(tl_f - tt_f) 
-    
-    tau = np.array([tau_h,tau_f])
-
-
-    r_h, dr_h = robot.get_com(body_part='h', calc_velocity=True)
-    r_f, dr_f = robot.get_com(body_part='f', calc_velocity=True)
-    
-    s_h = (r_h[0] - xt_h)/(xl_expected_h - xt_h)
-    s_f = (r_f[0] - xt_f)/(xl_expected_f - xt_f)
-    
-    s = np.array([s_h,s_f]).reshape(2)
-
-
-    if grf_flag_time:
-        qdd_ref = compute_qddot_des(robot,tau=tau)
-    else:
-        qdd_ref = compute_qddot_des(robot,s=s)
-    
-
-
-    compute_qdot_des(robot,qdd_ref)
-    compute_q_des(robot)
-    
-    
     control = Centauro_ControlClass(robot)
-#    q_0 = np.zeros(8)
+
     
     
+    # qdot_des = qdd_des * robot.dt + QD_des[-1]
+    qdot_des = qdd_des * robot.dt + robot.qdot[-1,:]
+
+    q_des =  qdot_des * robot.dt + robot.q[-1,:]
     
-    torque = control.InvDyn_qr(robot.q_des[-1],robot.qdot_des[-1],qdd_ref)
     
 
-#    control = Control(robot)
-#    torque = control.torque(qdd_ref)
+    QDD_des.append(qdd_des)
+    QD_des.append(qdot_des)
+    Q_des.append(q_des)
     
-#    print('torques', torque)
+    # return control.Gravity_Compensation(q_des,qdot_des)
+    
+    # control1 = Control(robot)
+    # tau = control1.compute_torque(qdd_des,qdot_des,q_des)
+    
+    # w = np.eye(5)
+    # W[2][2] = 100
+    r_h, dr_h = robot.CalcBodyToBase(robot.body.id('b1h'),\
+                              np.array([robot.param.lg1h,0,0]),\
+                              update_kinematics=True,q=robot.q[-1,:],\
+                              qdot=robot.qdot[-1,:],calc_velocity=True)
     
     
-    return torque.flatten()
+    r_f, dr_f = robot.CalcBodyToBase(robot.body.id('b1f'),\
+                              np.array([robot.param.lg1f,0,0]),\
+                              update_kinematics=True,q=robot.q[-1,:],\
+                              qdot=robot.qdot[-1,:],calc_velocity=True)
+    
+    # kp0 = 100
+    # kd0 = 10
+    # tau0 = np.ones(5)*100
+    # tau0 = ctrl_nullspace(robot)
+    # tau0 = np.zeros(5)
+    # print(tau0)
+    # w,b = track_grf(robot)
+    # tau0 = -b
+    
+    tau = control.InvDyn_qr(q_des, qdot_des, qdd_des)
 
 
-def get_xdd_ref(xdd_des,delta_xd,delta_x,kp=4.,kd=0.4):
-    
-    
-    if xdd_des.shape == delta_xd.shape == delta_x.shape:
-        return xdd_des + kd * delta_xd + kp * delta_x
-    else:
-        raise Exception('matrices have different shapes')
+    return tau.flatten()
 
+def ctrl_nullspace(robot):
+    u = np.zeros(5)
+    u[2] = ctrl_torso(robot,robot.slip_shift)
 
+    y_des, yd_des = robot.CalcBodyToBase(robot.body.id('b1f'),
+                                 np.array([robot.param.l1f,0,0]),
+                                 calc_velocity = True)
+    
+    y,yd = robot.CalcBodyToBase(robot.body.id('b1h'),
+                                 np.array([robot.param.l1h,0,0]),
+                                 calc_velocity = True)
+    
+    kp, kd = 400,100
+    F = kp*(y_des - y + 0.07) + kd*(yd_des - yd)
+    F = F[:2]
+    J = robot.computeJacobian23('h')
+    u[:2] = - np.dot(J.T,F)
+    return u
 
-def compute_xddref(robot,tau=None,s=None):
+def track_grf(robot):
     
-#    print('s = ' , s ,'tau = ',tau )
+    landa = np.zeros(4)
+    u_h = ctrl_stance(robot, 'h',True)
+    u_f = ctrl_stance(robot, 'f',True)
+    
+    landa[:2] = u_h
+    landa[2:] = u_f
+    landa.reshape(4,1)
+    k = np.diag((1,1000,2000,1000))
+    
+    cforce = robot.cforce[-1]
+    cost = 1/2 * np.matmul(np.matmul((cforce - landa).T ,k),cforce - landa)
+    # print(cost)
+    W_l = k
+    b_l = - np.matmul(landa.T,k)
+    return W_l,b_l
+    
 
-    xdd_des = np.array([0,0,0,0]).reshape(4,1) #must get from SLIP
     
     
+    
+
+def compute_xddref(robot,x_des,xd_des,xdd_des):
 
     com_h , com_vel_h = robot.get_com(body_part='h', calc_velocity=True)
     com_f , com_vel_f = robot.get_com(body_part='f', calc_velocity=True)
@@ -163,100 +199,157 @@ def compute_xddref(robot,tau=None,s=None):
     x_actual_h = np.array(com_h[:2]).reshape(1,2)
     xd_actual_h = np.array(com_vel_h[:2]).reshape(1,2)
 
-    
     x_actual_f = np.array(com_f[:2]).reshape(1,2)
     xd_actual_f = np.array(com_vel_f[:2]).reshape(1,2)
     
+   
     x_actual = np.concatenate((x_actual_h,x_actual_f)).reshape(4,1)
     xd_actual = np.concatenate((xd_actual_h,xd_actual_f)).reshape(4,1)
-
-
     
-    if grf_flag_time:
-        xd_des_h = np.array([robot.slip_fun_dx_t(tau[0]),robot.slip_fun_dy_t(tau[0])])
-        x_des_h = np.array([robot.slip_fun_x_t(tau[0]),robot.slip_fun_y_t(tau[0])])
-        xd_des_f = np.array([robot.slip_fun_dx_t(tau[1]),robot.slip_fun_dy_t(tau[1])])
-        x_des_f = np.array([robot.slip_fun_x_t(tau[1]),robot.slip_fun_y_t(tau[1])])
-    else:
-        xd_des_h = np.array([robot.slip_fun_dx_s(s[0]),robot.slip_fun_dy_s(s[0])])
-        x_des_h = np.array([robot.slip_fun_x_t(s[0]),robot.slip_fun_y_t(s[0])])
-        xd_des_f = np.array([robot.slip_fun_dx_s(s[1]),robot.slip_fun_dy_s(s[1])])
-        x_des_f = np.array([robot.slip_fun_x_t(s[1]),robot.slip_fun_y_t(s[1])])
     
-#    xd_des = np.concatenate((xd_des_h,xd_des_f)).reshape(4,1)
-    xd_des = np.array([0,0,0,0]).reshape(4,1)
-#    x_des = np.concatenate((x_des_h,x_des_f)).reshape(4,1)
-    x_des = x_actual + np.array([0.1,0,0.1,0]).reshape(4,1)
-
+    xdd_ref = pd_helper(xdd_des.flatten(),(xd_des - xd_actual).flatten() , (x_des - x_actual).flatten())
     
-    xdd_ref = get_xdd_ref(xdd_des,(xd_des - xd_actual) , (x_des - x_actual))
-#    delta_xd = np.array([0,0,0,0]).reshape(4,1)
-#    deltax = np.array([0,0,0,0]).reshape(4,1)
-#    xdd_ref = get_xdd_ref(xdd_des,delta_xd , deltax)
-    
-#    print('xddref_shape is',xdd_ref.shape, xdd_ref)
+    # print("here xdd ref {} \n derivatives".format(xdd_ref))
     return xdd_ref
-        
 
-def compute_qddot_des(robot,tau=None,s=None):
-
-    
-    if 'tau' in globals() and grf_flag_time:
-        raise Exception('tau is required')
-    if 's' in globals() and not grf_flag_time:
-        raise Exception('s is required')
-    
-    if grf_flag_time:
-        xdd_ref = compute_xddref(robot,tau=tau)
+def pd_helper(acceleration,velocity_variation,position_variation,kp=10000,kd=500):
+    if acceleration.shape == velocity_variation.shape == position_variation.shape:
+        # print(acceleration.shape,velocity_variation.shape,position_variation.shape)
+        return (acceleration + kd * velocity_variation + kp * position_variation).reshape(acceleration.shape[0],1)
     else:
-        xdd_ref = compute_xddref(robot,s=s)
-        
-#    print('xddref shape' , xdd_ref.shape)
-    
-    
+        raise Exception('matrices have different shapes')
+
+
+def compute_qddot_des(robot,xdd_ref):
+
     jdqd_h,jdqd_f = robot.CalcJgdotQdot()
+    jdqd = np.vstack((jdqd_h,jdqd_f)).reshape(4,1)
     
-    jdqd = np.vstack((jdqd_h,jdqd_f)).reshape(4,1) 
+    jcdqd = -robot.CalcGamma(robot.getContactFeet(),robot.q[-1,:],robot.qdot[-1,:]).reshape(4,1)
+    
+    # Jc = robot.Jc.reshape(4,8)
+    Jc = robot.Jc_from_cpoints(robot.model,robot.q[-1,:],\
+                               robot.body,robot.getContactFeet())
+    
+    jGh = robot.computeJacobianCOM('h')
+    jGf = robot.computeJacobianCOM('f')
+    
+    jG = np.vstack((jGh,jGf)).reshape(4,8) 
 
 
+    J = np.vstack((Jc,jG))
+    aux = np.vstack((np.zeros((4,1)),xdd_ref.reshape(4,1))) - \
+        np.vstack((jcdqd,jdqd))
+    
+    # print(J.shape,aux.shape,'shapes')
+    
+
+
+    # qdd_ref = np.matmul(np.linalg.pinv(jG),(xdd_ref-jdqd)).flatten()
+    qdd_ref = np.matmul(np.linalg.pinv(J),aux).flatten()
+    # print("qdd ref is {}".format(qdd_ref.shape))
+    
+    return qdd_ref
+
+def compute_xddot_des(robot,qdd_des):
     jGh = robot.computeJacobianCOM('h')
     jGf = robot.computeJacobianCOM('f')
     
     jG = np.vstack((jGh,jGf)).reshape(4,8) 
     
-    qdd_ref = np.matmul(np.linalg.pinv(jG),(xdd_ref-jdqd))
+    jdqd_h,jdqd_f = robot.CalcJgdotQdot()
+    jdqd = np.vstack((jdqd_h,jdqd_f)).reshape(4,1) 
+    
+    return jdqd + np.matmul(jG,np.array(qdd_des).reshape(8,1)).reshape(4,1)
+    
 
-    
-#    print(qdd_ref.shape,'qdd_ref ',qdd_ref.shape,'jdqd shape',jdqd.shape)
-    return qdd_ref
 
 
-def compute_qdot_des(robot,qddot_des):
-    qdot_des = dt*qddot_des + robot.qdot_des[-1]
-    robot.qdot_des.append(qdot_des)
-    return qdot_des
+def slip_data(robot,base='s'):
     
-def compute_q_des(robot):
-    q_des = robot.qdot_des[-1] * dt + robot.q_des[-1]
-    robot.q_des.append(q_des)
-    return q_des
+    if base == 't':
+        
+        t = robot.t[-1][0] + robot.dt
+        tt = max(robot.tt_h,robot.tt_f)
+        tl = tt + robot.slip_st_dur
+        
+        
+        
+        t_s = (t - tt) / (tl - tt)
+        # print('ts = {}'.format(t_s)) ##SLIP did'nt complete
+        x = np.asscalar(robot.slip_fun_x_t(t_s))
+        dx = np.asscalar(robot.slip_fun_dx_t(t_s))
+        
+        y = np.asscalar(robot.slip_fun_y_t(t_s))
+        dy = np.asscalar(robot.slip_fun_dy_t(t_s))
+        
+        xx = [x,y] *2
+        xx_d = [dx,dy] * 2
+        xx_dd = [0,0] * 2
+        
+        x = np.array(xx).reshape(4,1)
+        
+        xd = np.array(xx_d).reshape(4,1)
+        xdd = np.array(xx_dd).reshape(4,1)
+    elif base == 's':
+        x_h = robot.get_com(body_part='h')
+        x_f = robot.get_com(body_part='f')
+        xt_h = X0[0][0]
+        xt_f = X0[2][0]
+        xl_h = xt_h + robot.slip_st_length[0]
+        xl_f = xt_f + robot.slip_st_length[0]
+        
+        s_h = (x_h[0] - xt_h) / (xl_h - xt_h)
+        s_f = (x_f[0] - xt_f) / (xl_f - xt_f)
+        # s_h = s_f
+        
+        S.append([s_h,s_f])
+        # print('s_h = {}, s_f = {}'.format(s_h,s_f))
+        x_h = np.asscalar(robot.slip_fun_x_s(s_h))
+        x_f = np.asscalar(robot.slip_fun_x_s(s_f))
+        dx_h = np.asscalar(robot.slip_fun_dx_s(s_h))
+        dx_f = np.asscalar(robot.slip_fun_dx_s(s_f))
+        
+        y_h = np.asscalar(robot.slip_fun_y_s(s_h)) 
+        y_f = np.asscalar(robot.slip_fun_y_s(s_f)) 
+        dy_h = np.asscalar(robot.slip_fun_dy_s(s_h)) 
+        dy_f = np.asscalar(robot.slip_fun_dy_s(s_f))
+        
+        x = np.array([x_h,y_h,x_f,y_f]).reshape(4,1)
+        xd = np.array([dx_h,dy_h,dx_f,dy_f]).reshape(4,1)
+        
+        dt = robot.dt
+        
+        xdd_h = (dx_h - np.asscalar(robot.slip_fun_dx_s(S[-2][0]))) / dt
+        xdd_f = (dx_f - np.asscalar(robot.slip_fun_dx_s(S[-2][1]))) / dt
+        
+        ydd_h = (dy_h - np.asscalar(robot.slip_fun_dy_s(S[-2][0]))) / dt 
+        ydd_f = (dy_f - np.asscalar(robot.slip_fun_dy_s(S[-2][1]))) / dt 
+        xdd = np.array([xdd_h,ydd_h,xdd_f,ydd_f]).reshape(4,1)
+    else:
+        raise Exception("slip data can be achived by base t or s. {} inserted".format(base))
     
-    
-    
-    
-    
+    return x,xd,xdd
+
+
+
     
     
     
 #==============================================================================
 # state_feedback control
 #==============================================================================
+
+
+
+
 def ctrl_state_feedbacks(robot):
     
     t = robot.t[-1][0] + robot.dt
 
-    kp, kd, kv = 20000, 2000, 1000*0
-    kthp, kthd =  -5000*0, -500*0
+    c = 1
+    kp, kd, kv = c*20000, c*2000, 1000*0
+    kthp, kthd =  5000*0, 500*0
     kthp_dist, kthd_dist = 300*0, 30*0
     
     th_des, dth_des = 0, 0
@@ -268,8 +361,20 @@ def ctrl_state_feedbacks(robot):
 #    J = np.zeros((5, robot.qdim))
 #    F_com = np.zeros((5, 1))
 
-    r_h, dr_h = robot.get_com(body_part='h', calc_velocity=True)
-    r_f, dr_f = robot.get_com(body_part='f', calc_velocity=True)
+    # r_h, dr_h = robot.get_com(body_part='h', calc_velocity=True)
+    # r_f, dr_f = robot.get_com(body_part='f', calc_velocity=True)
+    
+    
+    r_h, dr_h = robot.CalcBodyToBase(robot.body.id('b1h'),\
+                              np.array([robot.param.lg1h,0,0]),\
+                              update_kinematics=True,q=robot.q[-1,:],\
+                              qdot=robot.qdot[-1,:],calc_velocity=True)
+    
+    
+    r_f, dr_f = robot.CalcBodyToBase(robot.body.id('b1f'),\
+                              np.array([robot.param.lg1f,0,0]),\
+                              update_kinematics=True,q=robot.q[-1,:],\
+                              qdot=robot.qdot[-1,:],calc_velocity=True)
     
     d = r_f - r_h
     ddot = dr_f - dr_h
@@ -288,9 +393,12 @@ def ctrl_state_feedbacks(robot):
     F_com[-1] = kthp*(th_des - th) + kthd*(dth_des - dth) + \
                 kthp_dist*(robot.slip_shift - d_norm) + kthd_dist*(- dd_norm)
                 
+    # print(F_com)
+                
 #    F_com[-1] = - F_com[-1]
     
     if 1 in p: 
+        # print('im here in state feedback')
         tt = robot.tt_h
         tl = tt + robot.slip_st_dur
         xt = robot.xt_h[0]
@@ -304,6 +412,7 @@ def ctrl_state_feedbacks(robot):
         ### exact slip feedback
         tau = (t - tt)/(tl - tt)
         s = (r[0] - xt)/(xl_expected - xt)
+        # s = S[-1][0]
         
 #        print 'h', tau, s
         
@@ -342,6 +451,7 @@ def ctrl_state_feedbacks(robot):
         ### exact slip feedback
         tau = (t - tt)/(tl - tt)
         s = (r[0] - xt)/(xl_expected - xt)
+        # s = S[-1][1]
         
         if grf_flag_time:
             h, dh = robot.slip_fun_y_t(tau), robot.slip_fun_dy_t(tau)  
@@ -372,7 +482,7 @@ def ctrl_state_feedbacks(robot):
     u_feedback[2] = ctrl_torso(robot, robot.slip_shift)
 #    u_feedback[2] = 0
     
-#    print u_feedback
+    # print u_feedback
     
     return u_feedback
 
@@ -393,35 +503,28 @@ def computeDesiredFootState(robot, body_part, x_now, dx_now):
     
     t = robot.t[-1][0] + robot.dt
 
-    if body_part == 'h': 
+    if body_part == 'slider': 
         tl = robot.tl_h
         xxi = robot.foot_pose_h - robot.xl_h[0]
-    elif body_part == 'f': 
+    else: print("body part does not exist!!")
+
+    if robot.getContactFeet() == []:
         tl = robot.tl_f
-        xxi = robot.foot_pose_f  - robot.xl_f[0]
-    
+
     tt = tl + robot.slip_sw_dur
     
-#    if body_part == 'h' and ((ta + tt) - t) < 0.05: tt = t 
-    
-#    ti = tl - ta # previous liftoff approximation
-#    tf = tt # next touchdown
 
-    xxf = robot.slip_sw_xt
-    
-#    xxi = x_foot - xl[0] # previous liftoff pose relative to current state
-#    xxf = x_foot - xt[0] # next touchdown relative to current state
-    
-#    yyi = xl[1]
-#    yyf = xt[1]
+    xxf = robot.slip_sw_xt 
 
-#    print body_part, '>>>', (t - tl)/(tt -tl)
-        
-    # get the swing feet pose and ...
     r, dr, ddr = getTraj(t, tl, tt, xxi, xxf)
+
+    # rxs.append(r[0])
+    # rys.append(r[1])
+    # print('r is {}'.format(r))
     h, dh = computeYShift(t, tl, tt, robot.slip_yt, robot.slip_yl)
+    # h,dh = (0,0)
     
-#    print 'h, dh', (x_now[1] - h), (dx_now[1] - dh)
+    # print 'h, dh',  h,  dh
 #    print 'r', r
 
         
@@ -459,7 +562,7 @@ def ctrl_torso(robot, shift):
 
     tau = 0
 
-    tau += 500*(robot.slip_shift - d_norm) + 50*(- dd_norm)
+    tau += 300*(robot.slip_shift - d_norm) + 300*(- dd_norm)
     
 #    tau += 500*(np.abs(d[1])) + 50*(-np.abs(ddot[1]))
         
@@ -499,7 +602,7 @@ def computeInitialConfig(robot, des_config, nlayer):
     des = np.array([x0_h, x_swing_h, x0_f, x_swing_f, \
                     dx0_h, dx_swing_h, dx0_f, dx_swing_f]).flatten()
     
-    model = ROBOT(t, q, qdot, p, u, dt, lua_file, param)
+    model = Centauro_RobotClass(t, q, qdot, p, u, dt, lua_file, param)
     
     if nlayer == 1:
         args = ([model, des, np, nlayer, 'first'])
@@ -670,49 +773,41 @@ def testInitialConfig():
 #
 #
 #
-def remove_zeros(array,tol=1e-5):
-    for i in range(len(array)):
-        if array[i] < tol:
-            array[i] = 0
-    return array
 
-def compute_desired_com_pos(t,tt,tl,v0_x,y0,vl_x,yl,vl_y):
-    if t<tt :
-        x = v0_x * t
-        y = -0.5*cr.param.g0* t ** 2 + y0
-        if tt - t <= 0.02:
-            print(('tt x and y approximately',x,y))
-        print('a->t')
-        return [x,y]
-    elif t>tl :
-        tau = t - tl
-        x = vl_x * t
-        y = -0.5*cr.param.g0* tau ** 2 + vl_y*tau + yl
-        if t - tl <= 0.02:
-            print(('lo x and y approximately',x,y))
-        print('l->a')
-        return [x,y]
-    else:
-        x = cr.slip_fun_x_s((t-tt)/(tl-tt)).flatten() + loaded['x'][0, 0]
-        y = cr.slip_fun_y_s((t-tt)/(tl-tt)).flatten()
-        print(('st',x,y))
-        return [x[0],y[0]]
+def check_derivations(Q_des,QD_des,QDD_des):
+    dt = 0.002
+    n = Q_des.shape[1]
+    qdot = []
+    qddot = []
+    for i,q in enumerate(Q_des):
+        try:
+            qdot.append((Q_des[i+1] - Q_des[i])/dt)
+            qddot.append((QD_des[i+1] - QD_des[i])/dt)
+        except:
+            pass
+    
+    
+    QD_des = np.array(QD_des)
+    qdot = np.array(qdot)
+    QDD_des = np.array(QDD_des)
+    qddot = np.array(qddot)
+    plt.figure()
+    for i in range(1,n):
+        plt.subplot(4,2,i)
+        plt.plot(np.linspace(0,1,qddot.shape[0]),qddot[:,i-1],label='dd_computed')    
+        plt.plot(np.linspace(0,1,QDD_des.shape[0]),QDD_des[:,i-1],label='dd_desired')
+    
+    plt.legend()
+    
+    plt.figure()
+    
+    for i in range(1,n):
+        plt.subplot(4,2,i)
+        plt.plot(np.linspace(0,1,qdot.shape[0]),qdot[:,i-1],label='d_computed')    
+        plt.plot(np.linspace(0,1,QD_des.shape[0]),QD_des[:,i-1],label='d_desired')
 
     
-def compute_desired_com_vel(t,tt,tl,v0_x,vl_x,vl_y):
-    if t<tt:
-        vel_x = v0_x
-        vel_y = -cr.param.g0 * t
-        return [vel_x,vel_y]
-    elif t>tl:
-        vel_x = vl_x
-        vel_y = -cr.param.g0 * (t-tl) + vl_y
-        return [vel_x,vel_y]
-    else:
-        vel_x = cr.slip_fun_dx_s((t-tt)/(tl-tt))
-        vel_y = cr.slip_fun_dy_s((t-tt)/(tl-tt))
-        return [vel_x,vel_y]
-    
+    plt.legend()
 
 
 

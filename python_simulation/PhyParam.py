@@ -15,10 +15,9 @@ class PhyParam():
     lg1h = 1.*l_hip
     lg2h = 1./2*l_thigh
     lg3h = 1./2*l_calf
-    
-    w_hip = .04
-    w_thigh = .04
-    w_calf = .04
+    w_hip = 0.08
+    w_thigh = 0.07125
+    w_calf = 0.02
     
     
     g0 = 9.81

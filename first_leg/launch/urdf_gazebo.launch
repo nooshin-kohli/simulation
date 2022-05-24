@@ -11,12 +11,12 @@
         <arg name="gui" default="true"/>
         <arg name="headless" default="false"/>
         <arg name="debug" default="false"/>
-
-        <!--arg name="verbose" default="true"/-->
+        <arg name="verbose" default="true"/>
     </include>
+
     <param name="robot_description" textfile="$(find first_leg)/urdf/leg.urdf"/>
 
-    <!--rosparam file="$(find icheetah_config)/config/ros_control/leg_effort.yaml" command="load"/-->
+    <!--rosparam file="$(find icheetah_config)/config/ros_control/ros_control.yaml" command="load"/-->
 
     <node name="robot_spawn" pkg="gazebo_ros" type="spawn_model" output="screen"
           args="-urdf -param robot_description -model leg -x $(arg world_init_x) -y $(arg world_init_y) -z $(arg world_init_z) -Y $(arg world_init_heading)" />
@@ -27,16 +27,19 @@
     </node-->
 
     <rosparam file="$(find icheetah_config)/config/ros_control/leg_effort.yaml" command="load"/>
+    <!-- <rosparam file="$(find icheetah_config)/config/ros_control/leg_control.yaml" command="load"/> -->
+
     <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" ns="/leg"
           args="--namespace=/leg
             joint_states_controller
             hip_joint_effort_controller
             thigh_joint_effort_controller
             calf_joint_effort_controller
-            jumper_effort_controller
+            jumper_position_controller
             ">
         </node>
-
+    
+    
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
         <remap from="/joint_states" to="/leg/joint_states"/>
     </node>

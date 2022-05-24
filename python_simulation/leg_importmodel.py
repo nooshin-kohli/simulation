@@ -2,7 +2,7 @@ class BodyClass3d(object):
     
     def __init__(self):
         
-        self.bodies = ['hip','thigh','calf']
+        self.bodies = ['jump','hip','thigh','calf']
         return None
 
 
@@ -26,7 +26,7 @@ class JointClass3d(object):
     
     def __init__(self):
         
-        self.joints = ['hip_joint','thigh_joint','calf_joint']
+        self.joints = ['jumper','hip_joint','thigh_joint','calf_joint']
         
         self.bodies = BodyClass3d()
         
@@ -40,11 +40,7 @@ class JointClass3d(object):
         
     def parent_child_body(self, name):
         q_i = self.q_i(name)
-        
-        if q_i in range(2):
-            child = self.bodies.id('b1h')
-        else:
-            child = q_i + 1
+        child = q_i + 1
         return self.bodies.parent_id(child), child
         
     def pairs(self):
@@ -52,6 +48,7 @@ class JointClass3d(object):
         pairs = []
     
         # manually pair joints:
+        pairs.append(['jumper', 'hip_joint'])
         pairs.append(['hip_joint', 'thigh_joint'])
         pairs.append(['thigh_joint', 'calf_joint'])
         
