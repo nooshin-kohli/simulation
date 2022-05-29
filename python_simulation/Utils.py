@@ -1,8 +1,6 @@
 """
 @author: Nooshin Kohli
-
 """
-
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.animation as animation
@@ -14,14 +12,15 @@ dir = home + '/projects/rbdl/build/python'
 sys.path.append(dir)
 import rbdl
 import numpy as np
+from leg_robotclass import ROBOT
 
 
 
-def Anim_Centauro(model, body, joint, Q, time):
+def Anim_leg(model, body, joint, Q, time):
 
     plt.close('all')
     
-    def update_joint(rbdl, model, body, joint, Q):
+    def update_joint(model, body, joint, Q):
         jpose = {}
         q = Q
         l_end = -0.240
@@ -33,7 +32,7 @@ def Anim_Centauro(model, body, joint, Q, time):
                 jpose[j] = pose
                 
         # manually adding foottips positions
-        pose = rbdl.CalcBodyToBaseCoordinates(model, q, body.id('calf'), \
+        pose = rbdl.CalcBodyToBaseCoordinates(model, q, model.GetBodyId('calf'), \
         np.array([0., 0., l_end]))
         jpose['ftip_1'] = pose
 #        print pose
@@ -45,14 +44,17 @@ def Anim_Centauro(model, body, joint, Q, time):
 #        pose = rbdl.CalcBodyToBaseCoordinates(model, q, body.id('knee_4'), \
 #        np.array([0., 0., -body.l_end]))
 #        jpose['ftip_4'] = pose
+        # print(jpose)
         return jpose
+
+    
         
     def update_pairs(jpose, joint):
         data = []
         paired = list(joint.pairs())
         
         #manually adding ftip 'virtual' joints:
-        paired.append(['calf', 'ftip_1']) 
+        paired.append(['calf_joint', 'ftip_1']) 
 #        paired.append(['knee_pitch_3', 'ftip_3']) 
 #        paired.append(['knee_pitch_4', 'ftip_4']) 
         
@@ -64,36 +66,56 @@ def Anim_Centauro(model, body, joint, Q, time):
 #            if paired[i][0] == 'j_arm1_6': print p1
             
         return np.array(data, dtype = float)
+    t = np.array([0])
+    dt = .002
+    print(update_joint(model,body,joint,Q))
+    jpose = update_joint(model,body,joint,Q)
+    print(update_pairs(jpose,joint))
+    
         
     def update_limbs(i, Q, limbs, model, body, joint, time):
-        jpose = update_joint(rbdl, model, body, joint, Q, i)
+        jpose = update_joint(model, body, joint, Q)
 #        print jpose['hip_yaw_1'][1]
         data = update_pairs(jpose, joint)
-#        print "=====\n======"
-#        print data
-#        print data.shape
+        print ("=====\n======")
+        # print (data)
+        shape = data.shape[0]
+        ############################################# TODO:for 2d plot uncomment this ############################################# 
+        # for h in range(shape):
+        #     data[h][1] = data[h][2]
+        print(data)
         for line, dat in zip(limbs, data):
-            line.set_data(dat[0:2, :])
-#            line.set_3d_properties(dat[2, :])
+            line.set_data(dat[0:2,])
+            # print(line.set_data(dat[0:2,]))
+            line.set_3d_properties(dat[2, :])
+            # print("line:",line)
+            # print("dat:",dat)
             
         time_text.set_text(time_template%(time[i]))
         
         return limbs, time_text
+
+    
     
     
 #    # Attaching 3D axis to the figure
-#    fig = plt.figure(figsize=(10, 10))
-#    fig.set_dpi(100)
-##    ax = p3.Axes3D(fig)
+    fig = plt.figure(figsize=(10, 10))
+    fig.set_dpi(100)
+    ax = p3.Axes3D(fig)
+    # t = np.array([0])
+    # dt = .002
+    # print(update_joint(model,body,joint,Q))
+    # jpose = update_joint(model,body,joint,Q)
+    # print(update_pairs(jpose,joint))
+    # print(update_limbs(0,Q,['hip','thigh'],model,body,joint,t))
 
-    fig, ax = plt.subplots(figsize=(18, 6))
+    # fig, ax = plt.subplots(figsize=(18, 6))
 
-    ini_data = np.array([[0, 0], [0, 0]])
-    limbs = [ax.plot(ini_data[0, :], ini_data[1, :], '.-', lw = 3)[0] \
-    for i in range(len(joint.pairs()) + 2)]
+    ini_data = np.array([[0, 0], [0, 0],[0, 0]])
+    limbs = [ax.plot(ini_data[1, :], ini_data[0, :],ini_data[2, :],'.-', lw = 3)[0] for i in range(len(joint.pairs())+2)]
 
     
-    time_text = ax.text(0, 0, '', transform=ax.transAxes, fontsize=16)
+    time_text = ax.text(0, 0,0, '', transform=ax.transAxes, fontsize=16)
     time_template = 'time: %.2f (s)'
     
     
@@ -103,20 +125,20 @@ def Anim_Centauro(model, body, joint, Q, time):
                                interval=1, blit=False, repeat_delay=5000)
     
     
-#    ax.set_xlim([-.25, 2.75])
-#    ax.set_xlabel('X')
-#   
-    ax.axis('equal') 
-    ax.set_ylim([-.5, 1.5])
+    ax.set_xlim([-.25, 1.5])
+    ax.set_xlabel('X')
+    # set this to equal for 2d fig
+    ax.axis('auto') 
+    ax.set_ylim([0, 1.5])
     
-    ax.plot([-1, 7], [0, 0], 'k')
+    ax.plot([-1, 1], [0, 0], 'k')
     
-#    ax.set_ylabel('Y')
+    ax.set_ylabel('Y')
 #    
-#    ax.set_zlim3d([0.0, 2.])
-#    ax.set_zlabel('Z')
-#
-#    ax.set_title('Centauro') 
+    ax.set_zlim3d([0.0, 2.])
+    ax.set_zlabel('Z')
+
+    ax.set_title('single leg') 
     
    
     
@@ -127,14 +149,13 @@ def Anim_Centauro(model, body, joint, Q, time):
     return robot_ani
     
     
-def Plot_base_coordinate(cr):
+def Plot_base_coordinate(cr,q,qdot):
     
     x, xdot = [], []
     
     for i in range(len(cr.t)):
     
-        xx, xxdot = cr.CalcBodyToBase(cr.body.id('b1h'),\
-            np.zeros(3), True, index = i)
+        xx, xxdot = cr.CalcBodyToBase(cr.model.GetBodyId('jump'),np.zeros(3), True, index = i,q=q,qdot=qdot)
             
         x.append(xx); xdot.append(xxdot)
     
@@ -174,9 +195,8 @@ def Plot_base_coordinate(cr):
     
 def Plot_foot_tip(cr):
     
-    point = np.array([cr.body.l_end, 0., 0.])
-    body_ids = [cr.body.id('b3h'), 
-               cr.body.id('b3f')]
+    point = np.array([0., 0., cr.calf_length])
+    body_ids = [cr.model.GetBodyId('calf')]
     
     for num, leg in enumerate(body_ids):  
         x, xdot = [], []
@@ -203,7 +223,7 @@ def Plot_foot_tip(cr):
     
 def Plot_contact_force(cr):
     p = cr.getContactFeet(True)
-    for leg in [1, 2]:  
+    for leg in [1]:  
         force = []
         for i in range(len(cr.t) - 1):
             if leg in p[i]:
@@ -321,26 +341,20 @@ def zoom_factory(ax, base_scale = 1.04):
 def Plot_contact_force_2(cr,desired,end_time,load):
     cf = cr.cforce
     cf_h_x = np.array([])
-    cf_f_x = np.array([])
     cf_h_y = np.array([])
-    cf_f_y = np.array([])
     t1 = cr.t[:-1]/end_time
     tt = np.asscalar(load['tt']) #touchdown time
     tl = np.asscalar(load['tl']) #lift-off time
-    mhg = (cr.param.m1h + cr.param.m2h + cr.param.m3h)*cr.param.g0
-    mfg = (cr.param.m1f + cr.param.m2f + cr.param.m3f)*cr.param.g0
+    mhg = (cr.mass_hip + cr.mass_thigh + cr.mass_calf)*cr.g0
+    # mfg = (cr.param.m1f + cr.param.m2f + cr.param.m3f)*cr.param.g0
     
     for i in range(len(cf)):
         if len(cf[i]) == 0:
             cf_h_x = np.append(cf_h_x,np.nan)
-            cf_f_x = np.append(cf_f_x,np.nan)
             cf_h_y = np.append(cf_h_y,np.nan)
-            cf_f_y = np.append(cf_f_y,np.nan)
         else:
             cf_h_x = np.append(cf_h_x,cf[i][0])
-            cf_f_x = np.append(cf_f_x,cf[i][2])
             cf_h_y = np.append(cf_h_y,cf[i][1])
-            cf_f_y = np.append(cf_f_y,cf[i][3])
 
 
     plt.figure()
@@ -352,37 +366,25 @@ def Plot_contact_force_2(cr,desired,end_time,load):
         plt.plot(np.linspace(tt,tl,len(cr.t)-1),mhg*cr.slip_fun_grf_y_s(t1),label='desired y force')
     plt.legend()
     plt.grid()
-    plt.figure()
-    plt.title('foot 2')
-    plt.plot(cr.t[:-1],cf_f_x,label='real x force')
-    plt.plot(cr.t[:-1],cf_f_y,label='real y force')
-    if desired:
-        plt.plot(np.linspace(tt,tl,len(cr.t)-1),mfg*cr.slip_fun_grf_x_s(t1),label='desired x force')
-        plt.plot(np.linspace(tt,tl,len(cr.t)-1),mfg*cr.slip_fun_grf_y_s(t1),label='desired y force')
-        
-    plt.legend()
-    plt.grid()
-    
-
 def plot_contact_feet(p_array,robot):
     f1 = np.array([])
-    f2 = np.array([])
+    # f2 = np.array([])
     for i in range(len(p_array)):
       f11 = contact_gen(p_array[i],0)
       f1 = np.append(f1,f11)
-      f22 = contact_gen(p_array[i],1)
-      f2 = np.append(f2,f22)
+    #   f22 = contact_gen(p_array[i],1)
+    #   f2 = np.append(f2,f22)
     
     plt.figure()
     plt.subplot(211)
     plt.plot(robot.t,f1)
     plt.title('hind leg')
-    plt.subplot(212)
-    plt.plot(robot.t,f2 , 'r')
-    plt.xlabel('fore leg')
+    # plt.subplot(212)
+    # plt.plot(robot.t,f2 , 'r')
+    # plt.xlabel('fore leg')
     plt.show()
     
-    return f1 , f2
+    return f1 
         
     
     
@@ -396,34 +398,57 @@ def contact_gen(cf,fn):
     if len(cf) == 0:
         return 0
 
+mode = 'slider'
+# initiate time array
+t = np.array([0])
+dt = .002  # step size
+
+# initiate stats with dummy values
+q = np.zeros(4) # joint position
+# q[3]=0.3
+qdot = np.zeros(4) # joint velocity
+u = np.zeros(4) # control inputs
+
+p = [[]] # the contact feet
+# strange behavior when contact = [[1, 2]] and the legs are upright!!!!
+
+# instanciate robot object:
+cr = ROBOT(t, dt, q, p, mode, qdot, u)
+# print(cr.body.bodies)
+# print(cr.joint)
+anim = Anim_leg(cr.model,cr.body,cr.joint,q,t)
+plot = Plot_base_coordinate(cr,q,qdot)
+force = Plot_contact_force(cr)
+# print(anim)
+
 
 #
 #
-#x_prev = np.array([0., 0., .85])
-#xdot_prev = np.zeros(3)
-#for ii in range(len(cr.t)):     
+# x_prev = np.array([0., 0., .85])
+# xdot_prev = np.zeros(3)
+# for ii in range(len(cr.t)):     
 #    x_des_now = np.array([x_des_t[i](cr.t[ii]) for i in rlx]).flatten()
 #    xdot_des_now = np.array([xdot_des_t[i](cr.t[ii]) for i in rlx]).flatten()
 #    xddot_des_now = np.array([xddot_des_t[i](cr.t[ii] + dt) for i in rlx]).flatten()
-#    
+   
 #    try: Dt = cr.t[-1] - cr.t[-2]
 #    except: Dt = dt
-#    
+   
 #    xdot_new = xdot_prev + Dt*xddot_des_now
 #    x_new = x_prev + Dt*xdot_new
-#    
+   
 #    x_prev, xdot_prev = x_new.copy(), xdot_new.copy()
-#    
-#    
-#    
+   
+   
+   
 #    plt.figure('x')
 #    plt.plot(cr.t[ii], x_des_now[0], '*')
 #    plt.plot(cr.t[ii], x_new[0], 'o')
-#    
+   
 #    plt.figure('xdot')
 #    plt.plot(cr.t[ii], xdot_des_now[0], '*')
 #    plt.plot(cr.t[ii], xdot_new[0], 'o')
-#    
+   
 #    plt.figure('xddot')
 #    plt.plot(cr.t[ii], xddot_des_now[0], '*')
 #    

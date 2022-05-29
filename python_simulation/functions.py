@@ -34,8 +34,9 @@ def ctrl_swing(robot, body_part,q,qdot):
     F = np.dot(kp, e) + np.dot(kd, de)
 
 #TODO: QUES??????
-    J23 = robot.computeJacobian23(body_part = body_part)
-    return np.dot(J23.T, F)
+    # J23 = robot.computeJacobian23(body_part = body_part)
+    J34 = robot.calcJc(robot.q)
+    return np.dot(J34.T, F)
 #==============================================================================
 #  stance control
 #============================================================================== 
@@ -77,8 +78,8 @@ def ctrl_stance(robot, body_part,only_force=False):
     if only_force:
         return F
     
-    J34 = robot.calcJc()
-    J23 = robot.computeJacobian23(body_part = body_part)
+    J34 = robot.calcJc(robot.q)
+    # J23 = robot.computeJacobian23(body_part = body_part)
     tau = np.dot(J34.T, F)
 
             
@@ -102,14 +103,14 @@ def ctrl_stance_ID(robot,x_des,xd_des,xdd_des):
     # xdd_des = np.append(x_des.flatten()[:2],0)
     # qdd_des = planer.qddot_from_xbase_no_hierarchi(xddot_des=xdd_des,x_des=x_des,xdot_des=xd_des)
 
-    control = Centauro_ControlClass(robot)
+    control = leg_controlclass(robot)
 
     
     
     # qdot_des = qdd_des * robot.dt + QD_des[-1]
-    qdot_des = qdd_des * robot.dt + robot.qdot[-1,:]
+    qdot_des = qdd_des * robot.dt + robot.qdot
 
-    q_des =  qdot_des * robot.dt + robot.q[-1,:]
+    q_des =  qdot_des * robot.dt + robot.q
     
     
 
@@ -124,16 +125,17 @@ def ctrl_stance_ID(robot,x_des,xd_des,xdd_des):
     
     # w = np.eye(5)
     # W[2][2] = 100
-    r_h, dr_h = robot.CalcBodyToBase(robot.body.id('b1h'),\
-                              np.array([robot.param.lg1h,0,0]),\
-                              update_kinematics=True,q=robot.q[-1,:],\
-                              qdot=robot.qdot[-1,:],calc_velocity=True)
+    #################################################################################TODO: it was b1h, i put jump ???
+    r_h, dr_h = robot.CalcBodyToBase(robot.body.id('jump'),\
+                              np.array([0,0,0]),\
+                              update_kinematics=True,q=robot.q,\
+                              qdot=robot.qdot,calc_velocity=True)
     
     
-    r_f, dr_f = robot.CalcBodyToBase(robot.body.id('b1f'),\
-                              np.array([robot.param.lg1f,0,0]),\
-                              update_kinematics=True,q=robot.q[-1,:],\
-                              qdot=robot.qdot[-1,:],calc_velocity=True)
+    # r_f, dr_f = robot.CalcBodyToBase(robot.body.id('b1f'),\
+    #                           np.array([robot.param.lg1f,0,0]),\
+    #                           update_kinematics=True,q=robot.q[-1,:],\
+    #                           qdot=robot.qdot[-1,:],calc_velocity=True)
     
     # kp0 = 100
     # kd0 = 10
@@ -145,8 +147,6 @@ def ctrl_stance_ID(robot,x_des,xd_des,xdd_des):
     # tau0 = -b
     
     tau = control.InvDyn_qr(q_des, qdot_des, qdd_des)
-
-
     return tau.flatten()
 
 def ctrl_nullspace(robot):
@@ -164,15 +164,15 @@ def ctrl_nullspace(robot):
     kp, kd = 400,100
     F = kp*(y_des - y + 0.07) + kd*(yd_des - yd)
     F = F[:2]
-    J = robot.computeJacobian23('h')
+    J = robot.calcJc(robot.q)
     u[:2] = - np.dot(J.T,F)
     return u
 
 def track_grf(robot):
     
     landa = np.zeros(4)
-    u_h = ctrl_stance(robot, 'h',True)
-    u_f = ctrl_stance(robot, 'f',True)
+    u_h = ctrl_stance(robot, 'slider',True)
+    # u_f = ctrl_stance(robot, 'f',True)
     
     landa[:2] = u_h
     landa[2:] = u_f
@@ -193,18 +193,19 @@ def track_grf(robot):
 
 def compute_xddref(robot,x_des,xd_des,xdd_des):
 
-    com_h , com_vel_h = robot.get_com(body_part='h', calc_velocity=True)
-    com_f , com_vel_f = robot.get_com(body_part='f', calc_velocity=True)
+    com_h , com_vel_h = robot.get_com(body_part='slider', calc_velocity=True)
+    # com_f , com_vel_f = robot.get_com(body_part='f', calc_velocity=True)
     
-    x_actual_h = np.array(com_h[:2]).reshape(1,2)
-    xd_actual_h = np.array(com_vel_h[:2]).reshape(1,2)
+    x_actual_h = np.array(com_h)
+    xd_actual_h = np.array(com_vel_h)
 
-    x_actual_f = np.array(com_f[:2]).reshape(1,2)
-    xd_actual_f = np.array(com_vel_f[:2]).reshape(1,2)
+    # x_actual_f = np.array(com_f[:2]).reshape(1,2)
+    # xd_actual_f = np.array(com_vel_f[:2]).reshape(1,2)
     
-   
-    x_actual = np.concatenate((x_actual_h,x_actual_f)).reshape(4,1)
-    xd_actual = np.concatenate((xd_actual_h,xd_actual_f)).reshape(4,1)
+    x_actual = x_actual_h
+    xd_actual = xd_actual_h
+    # x_actual = np.concatenate((x_actual_h,x_actual_f)).reshape(4,1)
+    # xd_actual = np.concatenate((xd_actual_h,xd_actual_f)).reshape(4,1)
     
     
     xdd_ref = pd_helper(xdd_des.flatten(),(xd_des - xd_actual).flatten() , (x_des - x_actual).flatten())
@@ -222,22 +223,20 @@ def pd_helper(acceleration,velocity_variation,position_variation,kp=10000,kd=500
 
 def compute_qddot_des(robot,xdd_ref):
 
-    jdqd_h,jdqd_f = robot.CalcJgdotQdot()
-    jdqd = np.vstack((jdqd_h,jdqd_f)).reshape(4,1)
+    jdqd = robot.calcJdQd()
+    # jdqd = np.vstack((jdqd_h,jdqd_f)).reshape(4,1)
     
-    jcdqd = -robot.CalcGamma(robot.getContactFeet(),robot.q[-1,:],robot.qdot[-1,:]).reshape(4,1)
+    jcdqd = -robot.CalcGamma(robot.getContactFeet(),robot.q,robot.qdot)
     
     # Jc = robot.Jc.reshape(4,8)
-    Jc = robot.Jc_from_cpoints(robot.model,robot.q[-1,:],\
-                               robot.body,robot.getContactFeet())
+    Jc = robot.Jc_from_cpoints(robot.q, robot.getContactFeet())
     
-    jGh = robot.computeJacobianCOM('h')
-    jGf = robot.computeJacobianCOM('f')
+    jG = robot.computeJacobianCOM('slider')
     
-    jG = np.vstack((jGh,jGf)).reshape(4,8) 
+     
 
 
-    J = np.vstack((Jc,jG))
+    # J = np.vstack((Jc,jG))
     aux = np.vstack((np.zeros((4,1)),xdd_ref.reshape(4,1))) - \
         np.vstack((jcdqd,jdqd))
     

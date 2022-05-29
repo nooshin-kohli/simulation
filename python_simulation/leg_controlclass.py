@@ -246,16 +246,15 @@ class Control(object):
     
     def torque(self,qdd_des):
         
-        jC = self.robot.Jc_from_cpoints(self.robot.model,self.robot.q[-1],self.robot.body,self.robot.getContactFeet())
+        jC = self.robot.Jc_from_cpoints(self.robot.model,self.robot.q,self.robot.body,self.robot.getContactFeet())
         
 #        print('jc shape is ', jC.shape)
         
         Q,R = self.QRDecomposition(jC.T)
 #        print('Q is ' , Q , 'shape is' , Q.shape)
         
-        M = self.robot.CalcM(self.robot.model, self.robot.q[-1, :])
-        h = self.robot.Calch(self.robot.model, self.robot.q[-1, :], \
-        self.robot.qdot[-1, :])
+        M = self.robot.CalcM(self.robot.model, self.robot.q)
+        h = self.robot.Calch(self.robot.model, self.robot.q, self.robot.qdot)
         
         
 #        print('qdd_des shape is ',qdd_des)

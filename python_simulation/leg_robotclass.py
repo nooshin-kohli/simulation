@@ -49,6 +49,7 @@ class ROBOT():
 
         if u.any(): self.u = np.array(u) # joint inputs
         else: self.u = np.zeros((1, self.qdim - self.fb_dim))
+        self.cforce = []
 
         self.t = np.array([t])
         self.dt = dt 
@@ -518,13 +519,13 @@ class ROBOT():
             qqdot, body_id, body_point_position, update_kinematics)
             return pose, vel
 
-    def calcJdQd(self,body):
+    def calcJdQd(self):
         actual_bodies = ['jump','hip','thigh','calf']
         jdqds = dict()
         
         for body in self.body.bodies:
             if body in actual_bodies:
-                if body == 'slider':
+                if body == 'jump':
                     pos = (1/2)*self.hip_length
                 elif body == 'hip':
                     pos = (1/2)*self.hip_length
@@ -613,13 +614,36 @@ class ROBOT():
                       (self.mass_hip + self.mass_thigh + self.mass_calf)
                 
         return com, vel
+    
+    def computeJacobianCOM(self, body_part):
+        bis = []
+        pts = []
+        ms = []
+        if body_part == 'h':
+            bis.append(self.model.GetBodyId('hip'))
+            bis.append(self.model.GetBodyId('thigh'))
+            bis.append(self.model.GetBodyId('calf'))
+            ######################## from urdf model ######################## 
+            pts.append(np.array([0.03, 0, 0.0]))
+            pts.append(np.array([0.0, 0.06, -0.02]))
+            pts.append(np.array([0.0, 0.0, -0.240]))
+            ms = [self.mass_hip, self.mass_thigh, self.mass_calf]
+            
+        else: print("body part should be slider")
+            
+        J = np.zeros((3, self.qdim))
+        
+        for i, bi in enumerate(bis):
+            J += ms[i]*self.CalcJacobian(self.model, self.q, bi, pts[i])
+            
+        return J/sum(ms)
             
     def computeFootState(self, body_part, \
                          calc_velocity = False, update_kinematics=True, \
                          index = -1, q = None, qdot = None):
         
         point = np.array([0., 0., self.calf_length])
-        if body_part == 'slider': body_id = self.model.GetBodyId('FR_calf')     
+        if body_part == 'slider': body_id = self.model.GetBodyId('calf')     
         return self.CalcBodyToBase(body_id, point, \
                             calc_velocity = calc_velocity, \
                             update_kinematics = update_kinematics,\

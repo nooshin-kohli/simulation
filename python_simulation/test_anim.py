@@ -6,7 +6,12 @@ Created on Mon Aug 29 18:01:36 2016
 """
 
 from __future__ import division
+from os.path import expanduser
 
+home = expanduser("~")
+dir = home + '/projects/rbdl/build/python'
+sys.path.append(dir)
+import rbdl
 import sys
 
 #sys.path.append('/home/mshahbazi/RBDL/build/python/')

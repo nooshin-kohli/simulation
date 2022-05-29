@@ -1,3 +1,7 @@
+'''
+Nooshin Kohli
+'''
+
 class BodyClass3d(object):
     
     def __init__(self):
@@ -15,8 +19,6 @@ class BodyClass3d(object):
     def parent_id(self, id):
         p_id = id - 1
         
-        if 'unknown' in self.name(id): p_id = None
-        elif id == self.id('hip'): p_id = None  
         # elif id == self.id('thigh'): p_id = self.id('')
         
         return p_id

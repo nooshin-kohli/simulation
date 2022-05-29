@@ -22,7 +22,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline as intp
 from leg_robotclass import ROBOT
 from Centauro_ControlClass import Centauro_ControlClass
 from Centauro_TaskSetClass import TaskSet
-from Utils import Anim_Centauro, Plot_base_coordinate, Plot_foot_tip, \
+from Utils import Anim_leg, Plot_base_coordinate, Plot_foot_tip, \
 Plot_contact_force, traj_plan, Plot_ff_fb , Plot_coms, Plot_stance_positions,\
 Plot_stance_velocities,Plot_footstates, plot_steps
 from PhyParam import PhyParam, write_lua
