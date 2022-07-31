@@ -22,7 +22,7 @@ class data_input():
 
         self.q1 = np.array([[self.mode_ini,self.mass,self.L0,self.k0,self.g,self.alphaR,self.foot]])
         self.t1 = np.array([0])
-        self.x1 = np.array([[0,0.9638,0,0]])      #TODO: ask about this!!!!!!!!!!!!!!!!!
+        self.x1 = np.array([[0,0.5,0,0]])      #TODO: ask about this!!!!!!!!!!!!!!!!!
         self.xdes1 = self.x1[-1, :]
 
 

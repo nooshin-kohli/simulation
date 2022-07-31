@@ -17,7 +17,7 @@ class ROBOT():
     def __init__(self, q, qdot, mode):     # TODO: path to leg_RBDL.urdf for robot without slider and legRBDL.urdf for slider
         if mode =='slider':
             #self.model = rbdl.loadModel("/home/nooshin/minicheetah/src/first_leg/scripts/legRBDL.urdf")
-             self.model = rbdl.loadModel("/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/legRBDL.urdf")
+            self.model = rbdl.loadModel("/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/legRBDL.urdf")
         else:
             #self.model = rbdl.loadModel("/home/nooshin/minicheetah/src/first_leg/scripts/leg_RBDL.urdf")
             self.model = rbdl.loadModel("/home/kamiab/catkin_ws/src/simulation/first_leg/scripts/leg_RBDL.urdf")
@@ -91,6 +91,11 @@ class ROBOT():
         rbdl.CompositeRigidBodyAlgorithm(self.model, q, M, True)
         # self.CalcM= M
         return M
+        
+    def CalcJacobian(self, model, q, bodyid, point):
+        Jc = np.zeros((3, model.dof_count))
+        rbdl.CalcPointJacobian(model, q, bodyid, point, Jc)
+        return Jc
 
     def CalcBodyToBase(self, body_id, body_point_position, \
     calc_velocity = False, update_kinematics=True, index = -1, q = None, qdot = None):
@@ -105,31 +110,130 @@ class ROBOT():
             vel = rbdl.CalcPointVelocity(self.model, qq, \
             qqdot, body_id, body_point_position, update_kinematics)
             return pose, vel
+    def get_com(self, calc_velocity=False, calc_angular_momentum=False, \
+                update=True, index=-1, body_part='slider', q=None, qdot=None):
+        #        TODO: error for the whole body (body_part = 'hf') and calc_velocity = True
 
-    def calculateBodyCOM(self, q, dq, calc_velocity, update):
-        p1 = self.CalcBodyToBase(self.model.GetBodyId('hip'), 
-                                    np.array([0.03, 0 ,0.0]),
-                                    update_kinematics = update,
-                                    q = q, qdot = dq, calc_velocity = calc_velocity)
-        p2 = self.CalcBodyToBase(self.model.GetBodyId('thigh'), 
-                                    np.array([0.0, 0.06, -0.02]),
-                                    update_kinematics = update,
-                                    q = q, qdot = dq, calc_velocity = calc_velocity)
-        p3 = self.CalcBodyToBase(self.model.GetBodyId('calf'), 
-                                    np.array([0., 0.01, self.calf_length]),
-                                    update_kinematics = update,
-                                    q = q, qdot = dq, calc_velocity = calc_velocity)
-        
-        if not calc_velocity:
-            com = (self.mass_hip*p1 + self.mass_thigh*p2 + self.mass_calf*p3)/\
-                (self.mass_hip + self.mass_thigh + self.mass_calf)
-            vel = None
+        com = np.zeros(3)
+        if calc_velocity:
+            com_vel = np.zeros(3)
         else:
-            com = (self.mass_hip*p1[0] + self.mass_thigh*p2[0] + self.mass_calf*p3[0])/\
-                    (self.mass_hip + self.mass_thigh + self.mass_calf)
-            vel = (self.mass_hip*p1[1] + self.mass_thigh*p2[1] + self.mass_calf*p3[1])/\
-                    (self.mass_hip + self.mass_thigh + self.mass_calf)
-        return com,vel
+            com_vel = None
+        if calc_angular_momentum:
+            angular_momentum = np.zeros(3)
+        else:
+            angular_momentum = None
+
+        if q is not None:
+            qq = q
+        else:
+            qq = self.q[index, :]
+        if qdot is not None:
+            qqdot = qdot
+        else:
+            qqdot = self.qdot[index, :]
+
+        if body_part == 'slider':
+            rbdl.CalcCenterOfMass(self.model, qq, \
+                                  qqdot, com, com_vel, angular_momentum, update)
+
+            if calc_velocity and calc_angular_momentum:
+                return com, com_vel, angular_momentum
+            elif calc_velocity and not calc_angular_momentum:
+                return com, com_vel
+            else:
+                return com
+        else:
+            com, vel = self.__calculateBodyCOM(qq, \
+                                               qqdot, calc_velocity, update, body_part)
+            if calc_velocity:
+                return com, vel
+            else:
+                return com
+
+    def __calculateBodyCOM(self, q, dq, calc_velocity, update, body_part):
+        if body_part == 'h':
+            p0 = self.CalcBodyToBase(self.model.GetBodyId('jump'),
+                                     np.array([0.03, 0, 0.0]),
+                                     update_kinematics=update,
+                                     q=q, qdot=dq, calc_velocity=calc_velocity)
+            p1 = self.CalcBodyToBase(self.model.GetBodyId('hip'),
+                                     np.array([0.03, 0, 0.0]),
+                                     update_kinematics=update,
+                                     q=q, qdot=dq, calc_velocity=calc_velocity)
+            p2 = self.CalcBodyToBase(self.model.GetBodyId('thigh'),
+                                     np.array([0.0, 0.06, -0.02]),
+                                     update_kinematics=update,
+                                     q=q, qdot=dq, calc_velocity=calc_velocity)
+            p3 = self.CalcBodyToBase(self.model.GetBodyId('calf'),
+                                     np.array([0., 0.01, (1 / 2) * self.calf_length]),
+                                     update_kinematics=update,
+                                     q=q, qdot=dq, calc_velocity=calc_velocity)
+
+            if not calc_velocity:
+                com = (2*p0+self.mass_hip * p1 + self.mass_thigh * p2 + self.mass_calf * p3) / \
+                      (2+self.mass_hip + self.mass_thigh + self.mass_calf)
+                vel = None
+            else:
+                com = (2*p0[0]+self.mass_hip * p1[0] + self.mass_thigh * p2[0] + self.mass_calf * p3[0]) / \
+                      (2+self.mass_hip + self.mass_thigh + self.mass_calf)
+                vel = (2*p0[1]+self.mass_hip * p1[1] + self.mass_thigh * p2[1] + self.mass_calf * p3[1]) / \
+                      (2+self.mass_hip + self.mass_thigh + self.mass_calf)
+
+
+        return com, vel
+    
+
+    def computeJacobianCOM(self, body_part,q):
+        bis = []
+        pts = []
+        ms = []
+        if body_part == 'slider':
+            bis.append(self.model.GetBodyId('jump'))
+            bis.append(self.model.GetBodyId('hip'))
+            bis.append(self.model.GetBodyId('thigh'))
+            bis.append(self.model.GetBodyId('calf'))
+            ######################## from urdf model ########################
+            pts.append(np.array([0.03, 0, 0.0]))
+            pts.append(np.array([0.03, 0, 0.0]))
+            pts.append(np.array([0.0, 0.06, -0.02]))
+            pts.append(np.array([0.0, 0.0, -0.240]))
+            ms = [2,self.mass_hip, self.mass_thigh, self.mass_calf]
+
+        else:
+            print("body part should be slider")
+
+        J = np.zeros((3, self.qdim))
+
+        for i, bi in enumerate(bis):
+            J += ms[i] * self.CalcJacobian(self.model, q, bi, pts[i])
+
+        return J / sum(ms)
+
+    # def calculateBodyCOM(self, q, dq, calc_velocity, update):
+    #     p1 = self.CalcBodyToBase(self.model.GetBodyId('hip'), 
+    #                                 np.array([0.03, 0 ,0.0]),
+    #                                 update_kinematics = update,
+    #                                 q = q, qdot = dq, calc_velocity = calc_velocity)
+    #     p2 = self.CalcBodyToBase(self.model.GetBodyId('thigh'), 
+    #                                 np.array([0.0, 0.06, -0.02]),
+    #                                 update_kinematics = update,
+    #                                 q = q, qdot = dq, calc_velocity = calc_velocity)
+    #     p3 = self.CalcBodyToBase(self.model.GetBodyId('calf'), 
+    #                                 np.array([0., 0.01, self.calf_length]),
+    #                                 update_kinematics = update,
+    #                                 q = q, qdot = dq, calc_velocity = calc_velocity)
+        
+    #     if not calc_velocity:
+    #         com = (self.mass_hip*p1 + self.mass_thigh*p2 + self.mass_calf*p3)/\
+    #             (self.mass_hip + self.mass_thigh + self.mass_calf)
+    #         vel = None
+    #     else:
+    #         com = (self.mass_hip*p1[0] + self.mass_thigh*p2[0] + self.mass_calf*p3[0])/\
+    #                 (self.mass_hip + self.mass_thigh + self.mass_calf)
+    #         vel = (self.mass_hip*p1[1] + self.mass_thigh*p2[1] + self.mass_calf*p3[1])/\
+    #                 (self.mass_hip + self.mass_thigh + self.mass_calf)
+    #     return com,vel
 
     def Calch(self, q, qdot):
         h = np.zeros(self.model.q_size)

@@ -3,7 +3,6 @@ from pickle import NONE
 import numpy as np
 from numpy.core.fromnumeric import transpose
 import rospy
-from scipy.signal import find_peaks
 from numpy import ndarray
 from rospy.numpy_msg import numpy_msg
 from sensor_msgs.msg import JointState
@@ -29,18 +28,19 @@ i=0
 switch_mode=1
 t_td=0
 t_lo=0.37
-x_c = []
-y_c = []
-num_c = 0
+first_jump=1
 
+torque_hip = []
+torque_thigh = []
+torque_calf = []
 
 ##################################importing the contact forces from slip model
 # import test
 from object import data_input
-h = data_input(dt=.01,m=2.643,L0=0.445,k0=300)
-print("ground Force_test:")
-print(h.function(3)[0][0]) 
-
+#####################  m=2.643
+h = data_input(dt=.01, m=4, L0=0.366, k0=1200)
+# print("ground Force_test:")
+# print(h.function(3)[0][0]) 
 
 ##################################this function extract first step of contact forces
 def extract_data(input_f, input_h):
@@ -58,31 +58,35 @@ def extract_data(input_f, input_h):
     return GF_contact, y_contact
 
 
-GF_contact, y_des_contact = extract_data(h.function(3)[0],h.function(3)[1])
+GF_contact, y_des_contact = extract_data(h.function(3)[0], h.function(3)[1])
+print(type(h.function(3)[1]))
 
 ##### interpolate y_des & GF_contact
 tau_s = np.linspace(0, 1, len(GF_contact))
+time_test= np.linspace (0, 3, len(h.function(3)[1]))
 intp_gf = intp(tau_s, GF_contact, k=1)
 intp_y = intp(tau_s, y_des_contact, k=1)
-
+intp_y_comp =  intp(time_test, h.function(3)[1], k=1)
 
 def pose(q_rbdl,qdot_rbdl):
     qdot_d = np.zeros(4)
-    Q_h = np.array([0, 0.0231, 0.1, -0.3]) # actual zero position of the robot
+    Q_h = np.array([0, 0.0231, 0.8, -1.2]) # actual zero position of the robot
     Kp= [[0,0,0,0],
-        [0,15,0,0],
-        [0,0,5,0],
-        [0,0,0,2]]
-    Kd= [[0,0,0,0 ],
-        [0,0.5,0,0],
-        [0,0.0,1,0],
-        [0,0,0,0]]
+        [0,10,0,0],
+        [0,0,10,0],
+        [0,0,0,1]]
+        
+    Kd= [[0, 0, 0, 0],
+         [0, 0.5, 0, 0],
+         [0, 0, 0.4, 0],
+         [0, 0, 0, 0]]
     
     error_dot = qdot_d - qdot_rbdl
     
-    error= Q_h - q_rbdl
+    error = Q_h - q_rbdl
+    
     #print(error)
-    tau_in=np.dot(error,Kp) + np.dot(error_dot,Kd)
+    tau_in = np.dot(Kp, error) #+ np.dot(Kd, error_dot)
 
     #print(tau_in)
    # print(q_rbdl)
@@ -91,50 +95,84 @@ def pose(q_rbdl,qdot_rbdl):
     pub_hip.publish(tau_in[1])
     pub_slider.publish(0)
 
+    torque_hip.append(0)
+    torque_thigh.append(0)
+    torque_calf.append(0)
+    
+
     
 #########################################################################################################  CONTACT MODE CONTROLLER  (COMPRESSION AND DECOMPRESSION)
+e_pre =[0,0,0]
+def contact(robot, delta_time, jc, GF, y_d, q_rbdl, qdot_rbdl,e_pre):
 
-def contact(slider_h, jc,GF,y_d,q_rbdl):
+    p = 10
+    K_p = [[p, 0, 0],
+            [0, p, 0],
+            [0, 0, p]]
 
-    Kp= [[0, 0, 0, 0],
-         [0, 1,0,0],
-         [0, 0,1,0],
-         [0,0,0, 1]]
-    e = y_d - slider_h
+    d= 0
+    K_d = [[d, 0, 0],
+            [0, d, 0],
+            [0, 0, d]]
+            
+    k = 0       
+    k_v = [[k, 0, 0],
+            [0, k, 0],
+            [0, 0, k]]
 
-    gain = [0, 0, 0, e]
+
+    j_COM = robot.computeJacobianCOM('slider',q_rbdl)
+    COM = robot.get_com(calc_velocity=True,body_part='h',q=q_rbdl,qdot=qdot_rbdl)
+
+    ################################# desired task space #################################
+    desire_pos = np.array([COM[0][0], COM[0][1], y_d])
+    # desire_vel = np.array([COM[1][0], COM[1][1], ydot_d])
+    # desired_vel = desire_vel.reshape(3,1)
+
+    ################################ calculating COM errors #################################
+    e = desire_pos - COM[0]
+    e_dot = (e - e_pre)/delta_time
+    e_pre = e
+    # e_vel = desire_vel - COM[1]
+
+    ################################ task space to joint space ################################ 
+    # tau_v = np.dot(j_COM.T,(np.dot(k_v,e_vel)))
+    tau_pd = np.dot(j_COM.T,(np.dot(K_p,e)+np.dot(K_d, e_dot)))
     J_t = jc.T
-    
     G_F=[0,0,-GF]
-    #print(GF)
-    Tau_ff = np.dot(J_t , G_F)
-    # print("tauff",Tau_ff)
-    K_p = [[0, 0, 0, 0],
-           [0, 5, 0, 0],
-           [0, 0, 5, 0],
-           [0, 0, 0, 5]]
-    print(np.dot(gain, K_p))
-    Tau_c = np.dot(Kp,Tau_ff) + np.dot(gain, K_p)  #k_d * (e_dot) 
-    print('tau_c=', Tau_c)
-    pub_calf.publish(Tau_c[3])
-    pub_thigh.publish(Tau_c[2])
-    pub_hip.publish(Tau_c[1]) 
+    Tau_ff = np.dot(J_t, G_F)
+    tau = (Tau_ff - tau_pd).flatten()
+    p_gain = np.dot(K_p,e)
+    d_gain = np.dot(K_d, e_dot)
+    print("Tau_ff: ", Tau_ff)
+    print("tau_pd: ",tau_pd)
+    pub_calf.publish(tau[3])
+    pub_thigh.publish(tau[2])
+    pub_hip.publish(tau[1]) 
     pub_slider.publish(0)
+    return tau
 
-    return Tau_ff
+
 
 ##########################################################################################################  HOMING THE ROBOT AT HOME POSITION AT FIRST
 def homing(q_rbdl, slider_h):
     #Q_h = np.array([0, -0.0231, 0.05, -0.9948]) # actual zero position of the robot
     #Q_h = np.array([0, 0.0231, 0.05, -0.3948])
-    Q_h = np.array([0, 0.0231, 0.1, -0.3])
+    Q_h = np.array([0, 0.0231, 0.8, -1.2])
+
     Kp= [[0,0,0,0],
-        [0,15,0,0],
+        [0,10,0,0],
         [0,0,1,0],
-        [0,0,0,1.5]]
+        [0,0,0,1]]
+    # Kd= [[0,0,0,0],
+    #     [0,0.9,0,0],
+    #     [0,0,0.1,0],
+    #     [0,0,0,1.5]]
+
     
-    error_h= 1   - slider_h
+    error_h= 0.7   - slider_h
     error= Q_h - q_rbdl
+    # error_dot = np.zeros(4)-qdot_rbdl
     #print(error)
     #tau_in=np.dot(error,Kp)
     tau_in=np.dot(Kp,error)
@@ -143,10 +181,10 @@ def homing(q_rbdl, slider_h):
     pub_calf.publish(tau_in[3])
     pub_thigh.publish(tau_in[2])
     pub_hip.publish(tau_in[1])
-    if error_h > 0.8 or error_h < -0.8:
+    if error_h > 0.6 or error_h < -0.6:
         pub_slider.publish(error_h*250)
 
-    elif (error_h < 0.8 and error_h > 0.3) or (error_h > -0.8 and error_h< -0.3):
+    elif (error_h < 0.6 and error_h > 0.3) or (error_h > -0.6 and error_h< -0.3):
         pub_slider.publish(error_h*230)
     
     else:
@@ -159,7 +197,7 @@ def compute_tau(t_now, t_td, t_lo):
         
 
 def mode_detect(x):
-    if x[2]<0.025:
+    if x[2] < 0.03:
         mode = 'contact'
         print("contact")
     else :
@@ -182,17 +220,25 @@ def sub_f_t(data):
     torque[1] = torque.y
     torque[2] = torque.z
 
-ax = plt.axes(projection='3d')
+
 sample_num=0
 sample_vec=[]
 force_vec=[]
 feedback_vec=[]
 height_vec=[]
 time_vec=[]
-
+slip_height_error=[]
+real_time_vec=[]
+t_real_first= 0
+t_ros_first_fall= 0 
+td_counter=0
+cond = []
+y_des_check =[]
+time_check=[]
+tpre = rospy.get_time()
 def callback(data):
-    global tpre, y_des, modeVec, GF_contact, y_des_contact ,groundForce, t_ros_pre, count ,dt, t_ros_first,i, switch_mode
-    global sample_vec, force_vec, feedback_vec, sample_num, height_vec, time_vec, t_td, t_lo, x_c, y_c, num_c
+    global e_pre,tpre, y_des, modeVec, GF_contact, y_des_contact ,groundForce, t_ros_pre, count ,dt, t_ros_first,i, switch_mode
+    global td_counter, sample_vec, force_vec,t_real_first, feedback_vec, sample_num, height_vec, time_vec, t_td, t_lo, real_time_vec, t_ros_first_fall
     if count==0:
         t_ros_first=rospy.get_time()
         switch_mode=1
@@ -219,21 +265,25 @@ def callback(data):
     robot = ROBOT(q_rbdl, qdot_rbdl,'slider')  # TODO: give your own urdf_path
     
     jc = robot.calcJc(q_rbdl)
+    cond.append(np.linalg.cond(jc))
     
     x = robot.pose_end(q_rbdl)
-   
     
     slider_h = robot.pose_slider(q_rbdl)
     slider_h = slider_h[2]
     
-    height_vec.append(slider_h)
     
 
-    #t_now = time.time()-tpre
+    delta_time = rospy.get_time() - tpre
+    tpre = rospy.get_time()
     t_ros_now = rospy.get_time() - t_ros_first
     time_vec.append(t_ros_now)
     qqdot = np.concatenate((q_rbdl, qdot_rbdl), axis= 0)
     
+    # if t_ros_now > 5:
+    #      height_error = h.function(3)[1][int((time.time()-5-t_real_first)/0.01)]  - slider_h
+    #      slip_height_error.append(height_error)
+    #      time_vec.append( time.time()- t_real_first)
     # print(q_rbdl)
     # print (qdot_rbdl)
     # print("qqdot", qqdot)
@@ -242,52 +292,71 @@ def callback(data):
     mode = mode_detect(x)
     #print(mode)
    # print(x)
+
     ###################################################
-    if t_ros_now < 5 :
-        homing(q_rbdl,slider_h)
+    if t_ros_now < 15 :
+        homing(q_rbdl, slider_h)
+        print("X:", x)
+        print(slider_h)
        
     else:
+        print("TD:",td_counter)
         pub_slider.publish(0)
+        if count ==1 :
+            t_real_first = time.time()
+            t_ros_first_fall = rospy.get_time()
+            count = 2
+
+        # slip_height_error.append( slider_h - intp_y_comp(time.time()-t_real_first) )
+        # real_time_vec.append(time.time() - t_real_first)
+        slip_height_error.append( slider_h - intp_y_comp(rospy.get_time() - t_ros_first_fall) )
+        real_time_vec.append(rospy.get_time() - t_ros_first_fall)
+
         if mode == 'contact': #or switch_mode == 0:
-            num_c = num_c+1
             if i==0 :
                 t_td = rospy.get_time()
-                t_lo = t_td + 0.37
-            end_pos = robot.pose_end(q_rbdl)
-            x_c.append(end_pos[0])
-            y_c.append(end_pos[1])
-
+                t_lo = t_td + len(GF_contact) * 0.01
+                td_counter+=1
+                print("TOUCH DOWN")
+            print("i:  ", i)
             print("t_td:", t_td)
             print("t_lo:", t_lo)
+            print("time-now:", rospy.get_time())
             tau = compute_tau(rospy.get_time(), t_td, t_lo)
             print("tau:", tau)
-            torque = contact(slider_h, jc, intp_gf(tau), intp_y(tau),q_rbdl)
-
-            
+            torque = contact(robot,delta_time, jc, intp_gf(tau), intp_y(tau),q_rbdl,qdot_rbdl,e_pre)
+            y_des_check.append(intp_y(tau))
+            time_check.append(rospy.get_time() - t_ros_first_fall)
             ################################ compute the feedback force 
             robot.set_input(torque)
             p = [1]
             feed_back_force = robot.ComputeContactForce(qqdot, p, torque)
             feedback_vec.append(feed_back_force[-1])
-            force_vec.append(GF_contact[i])
-            sample_vec.append(sample_num)
+            force_vec.append(intp_gf(tau))
+            sample_vec.append(rospy.get_time() - t_ros_first_fall)
             sample_num+=1
             # print("GF contact:",GF_contact[i])
             # print("feed_back:", feed_back_force)
             # print("torque:", torque)
             i+=1
             # print(i)
-            switch_mode=0
-            if (i>=len(GF_contact)):
-                i=0
-                switch_mode=1
-                print("cycle change")
+            # switch_mode=0
+            # if (i>=len(GF_contact)):
+            #     i=0
+            #     switch_mode=1
+            #     print("cycle change")
         else:
-            pose(q_rbdl,qdot_rbdl)
+            pose(q_rbdl, qdot_rbdl)
+            force_vec.append(0)
+            sample_vec.append(rospy.get_time() - t_ros_first_fall)
+            feedback_vec.append(0)
             i=0
-           
+            # if td_counter > 5:
+            #     rospy.signal_shutdown("td_count")
+        height_vec.append(slider_h)
+        # print("L0: ", slider_h - robot.pose_end[2])  
+        # print("real time:", time.time() - t_real_first)
     
-
     
 
 
@@ -295,51 +364,50 @@ def main():
     # rospy.init_node('command', anonymous=True)
     rospy.Subscriber("/leg/joint_states", JointState, callback)
     rospy.spin()
+    #rospy.signal_shutdown(reason)
     if rospy.is_shutdown():
         plt.figure()
         plt.plot(sample_vec, feedback_vec)
         plt.plot(sample_vec, force_vec)
+        plt.plot(np.linspace(0,3, num=len(h.function(3)[0])),h.function(3)[0])
         plt.legend(["feedback_force", "Force_from_model"], loc ="upper right")
         plt.title('feedback vec')
+       
+
         plt.figure()
-        # data = np.array([time_vec, height_vec])
-        # print(type(data))
+        plt.plot(sample_vec, height_vec)  
+        plt.scatter(time_check, y_des_check)
+        plt.plot(np.linspace(0,3, num=len(h.function(3)[1])),h.function(3)[1])     
+        plt.legend(["slider-height", "y_input_desire","y_des_from_model"], loc ="upper right")
+        # plt.figure()
         # plt.plot(time_vec, height_vec)
-        peaks, _ = find_peaks(height_vec, distance=1)
-        # difference between peaks is >= 150
-        print(np.diff(peaks))
-        # prints [186 180 177 171 177 169 167 164 158 162 172]
+       
+       
+        # plt.figure()
+        # plt.plot(sample_vec, torque_hip, 'r')
+        # plt.plot(sample_vec, torque_thigh, 'g')
+        # plt.plot(sample_vec, torque_calf, 'b')
+        # plt.legend(["hip torque","thigh torque","calf torque"], loc ="upper right")
 
-        plt.plot(time_vec, height_vec)
-        # print(type(height_vec))
-        # plt.plot(peaks, height_vec[peaks], "x")
-        plt.show()
-
+        # plt.figure()
+        # plt.plot(time_vec,cond)
 
         ######################test
-        plt.figure()
-        xs = np.linspace(0, 1, 1000)
-        plt.plot(xs, intp_gf(xs), 'g', lw=3, alpha=0.7)
-        plt.title('interpolated force')
+        # print(len(GF_contact))
+        # plt.figure()
+        # x = np.linspace(0, len(GF_contact))
+    
+        # plt.plot(x, GF_contact, 'r', lw=3, alpha=0.7)
+        # plt.title('GF_contact')
         
 
-        plt.figure()
-        xs = np.linspace(0, 1, 1000)
-        plt.plot(xs, intp_y(xs), 'r', lw=3, alpha=0.7)
-        plt.title('interpolated height')
-
-        # print("height:")
-        # print(len(height_vec))
-
-        print("x:")
-        print(len(x_c))
-        print(num_c)
+        # plt.figure()
+        # xs = np.linspace(0, 1, 1000)
+        # plt.plot(xs, intp_gf(xs), 'r', lw=3, alpha=0.7)
+        # plt.title('interpolated height')
 
         plt.figure()
-        plt.plot(x_c,y_c)
-        # ax.scatter3D(x_c,y_c,height_vec)
-        plt.title('contact pose')
-
+        plt.plot(real_time_vec, slip_height_error)
         plt.show()
         #  pass
 
@@ -351,6 +419,4 @@ if __name__ == '__main__':
         pass
 
 ####[0.17902869 0.09235515 0.2273961 ] home-position in x y z
-
-
 
