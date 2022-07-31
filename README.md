@@ -1,3 +1,5 @@
+# Python simulation
+This is the link the pyhton simulation of the slip model: https://github.com/nooshin-kohli/python_simulation
 # Gazebo simulation and ROS
 ## prerequisites
 Considering ROS Melodic is installed on your Ubuntu 18.04, we will guide you to configure your workspace.
