@@ -38,7 +38,7 @@ torque_calf = []
 # import test
 from object import data_input
 #####################  m=2.643
-h = data_input(dt=.01, m=4, L0=0.366, k0=1200)
+h = data_input(dt=.01, m=4, L0=0.398, k0=1500)
 # print("ground Force_test:")
 # print(h.function(3)[0][0]) 
 
@@ -67,26 +67,28 @@ time_test= np.linspace (0, 3, len(h.function(3)[1]))
 intp_gf = intp(tau_s, GF_contact, k=1)
 intp_y = intp(tau_s, y_des_contact, k=1)
 intp_y_comp =  intp(time_test, h.function(3)[1], k=1)
-
-def pose(q_rbdl,qdot_rbdl):
+error_pre = [0,0,0,0]
+def pose(q_rbdl,qdot_rbdl,delta_time,error_pre):
     qdot_d = np.zeros(4)
-    Q_h = np.array([0, 0.0231, 0.8, -1.2]) # actual zero position of the robot
+    Q_h = np.array([0, 0.0231, 0.6, -1.2]) # actual zero position of the robot
     Kp= [[0,0,0,0],
         [0,10,0,0],
-        [0,0,10,0],
-        [0,0,0,1]]
+        [0,0,20,0],
+        [0,0,0, 1]]
         
     Kd= [[0, 0, 0, 0],
-         [0, 0.5, 0, 0],
-         [0, 0, 0.4, 0],
+         [0, 0.1, 0, 0],
+         [0, 0, 0.1, 0],
          [0, 0, 0, 0]]
     
     error_dot = qdot_d - qdot_rbdl
     
     error = Q_h - q_rbdl
+    error_dot  = (error-error_pre)/delta_time
+    error_pre = error
     
     #print(error)
-    tau_in = np.dot(Kp, error) #+ np.dot(Kd, error_dot)
+    tau_in = np.dot(Kp, error) + np.dot(Kd, error_dot)
 
     #print(tau_in)
    # print(q_rbdl)
@@ -101,16 +103,16 @@ def pose(q_rbdl,qdot_rbdl):
     
 
     
-#########################################################################################################  CONTACT MODE CONTROLLER  (COMPRESSION AND DECOMPRESSION)
+########################################################  CONTACT MODE CONTROLLER  (COMPRESSION AND DECOMPRESSION)
 e_pre =[0,0,0]
 def contact(robot, delta_time, jc, GF, y_d, q_rbdl, qdot_rbdl,e_pre):
 
-    p = 10
+    p = 25
     K_p = [[p, 0, 0],
             [0, p, 0],
             [0, 0, p]]
 
-    d= 0
+    d= 2
     K_d = [[d, 0, 0],
             [0, d, 0],
             [0, 0, d]]
@@ -158,7 +160,7 @@ def contact(robot, delta_time, jc, GF, y_d, q_rbdl, qdot_rbdl,e_pre):
 def homing(q_rbdl, slider_h):
     #Q_h = np.array([0, -0.0231, 0.05, -0.9948]) # actual zero position of the robot
     #Q_h = np.array([0, 0.0231, 0.05, -0.3948])
-    Q_h = np.array([0, 0.0231, 0.8, -1.2])
+    Q_h = np.array([0, 0.0231, 0.6, -1.2])
 
     Kp= [[0,0,0,0],
         [0,10,0,0],
@@ -170,7 +172,7 @@ def homing(q_rbdl, slider_h):
     #     [0,0,0,1.5]]
 
     
-    error_h= 0.7   - slider_h
+    error_h= 1.1   - slider_h
     error= Q_h - q_rbdl
     # error_dot = np.zeros(4)-qdot_rbdl
     #print(error)
@@ -236,8 +238,9 @@ cond = []
 y_des_check =[]
 time_check=[]
 tpre = rospy.get_time()
+
 def callback(data):
-    global e_pre,tpre, y_des, modeVec, GF_contact, y_des_contact ,groundForce, t_ros_pre, count ,dt, t_ros_first,i, switch_mode
+    global error_pre,e_pre,tpre, y_des, modeVec, GF_contact, y_des_contact ,groundForce, t_ros_pre, count ,dt, t_ros_first,i, switch_mode
     global td_counter, sample_vec, force_vec,t_real_first, feedback_vec, sample_num, height_vec, time_vec, t_td, t_lo, real_time_vec, t_ros_first_fall
     if count==0:
         t_ros_first=rospy.get_time()
@@ -273,9 +276,10 @@ def callback(data):
     slider_h = slider_h[2]
     
     
-
-    delta_time = rospy.get_time() - tpre
-    tpre = rospy.get_time()
+    t_now = time.time()
+    delta_time = t_now - tpre
+    tpre = t_now
+    
     t_ros_now = rospy.get_time() - t_ros_first
     time_vec.append(t_ros_now)
     qqdot = np.concatenate((q_rbdl, qdot_rbdl), axis= 0)
@@ -298,6 +302,7 @@ def callback(data):
         homing(q_rbdl, slider_h)
         print("X:", x)
         print(slider_h)
+        # print("+++++++++++++++++++++++++++++++++++++++++++++++++", delta_time)
        
     else:
         print("TD:",td_counter)
@@ -324,7 +329,7 @@ def callback(data):
             print("time-now:", rospy.get_time())
             tau = compute_tau(rospy.get_time(), t_td, t_lo)
             print("tau:", tau)
-            torque = contact(robot,delta_time, jc, intp_gf(tau), intp_y(tau),q_rbdl,qdot_rbdl,e_pre)
+            torque = contact(robot, delta_time, jc, intp_gf(tau), intp_y(tau),q_rbdl,qdot_rbdl,e_pre)
             y_des_check.append(intp_y(tau))
             time_check.append(rospy.get_time() - t_ros_first_fall)
             ################################ compute the feedback force 
@@ -346,7 +351,7 @@ def callback(data):
             #     switch_mode=1
             #     print("cycle change")
         else:
-            pose(q_rbdl, qdot_rbdl)
+            pose(q_rbdl, qdot_rbdl,delta_time,error_pre)
             force_vec.append(0)
             sample_vec.append(rospy.get_time() - t_ros_first_fall)
             feedback_vec.append(0)
@@ -354,7 +359,8 @@ def callback(data):
             # if td_counter > 5:
             #     rospy.signal_shutdown("td_count")
         height_vec.append(slider_h)
-        # print("L0: ", slider_h - robot.pose_end[2])  
+    ############################################################ To find L0 uncomment below 
+    # print("L0: ", slider_h - robot.pose_end(q_rbdl)[2])  
         # print("real time:", time.time() - t_real_first)
     
     
