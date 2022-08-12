@@ -19,3 +19,4 @@ leg:
     type: effort_controllers/JointPositionController
     joint: calf_joint
     pid: { p: 20, d: 0.001, i: 0 }
+    
